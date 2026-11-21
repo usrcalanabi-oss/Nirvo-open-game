@@ -15,3 +15,7 @@
 @media(max-width:700px){#busHud{bottom:10px;padding:10px 12px}.bus-speed strong{font-size:38px}.bus-help{font-size:7px}#driveControls.active{display:flex;flex-wrap:wrap;max-width:170px;justify-content:flex-end}#busEnter{bottom:100px}}
 
 .bus-passengers{margin-top:5px;color:#e4c98c;font-size:8px;letter-spacing:1.6px}
+
+.world-toast{position:absolute;left:50%;top:24%;transform:translate(-50%,-8px);opacity:0;padding:11px 18px;background:rgba(11,30,24,.92);border:1px solid #d7bd80;color:#f4e8c8;font:800 11px Manrope,sans-serif;letter-spacing:1.5px;pointer-events:none;transition:.25s;z-index:10}.world-toast.show{opacity:1;transform:translate(-50%,0)}
+#worldAction{position:absolute;left:50%;bottom:118px;transform:translateX(-50%);display:none;padding:12px 20px;border:1px solid #d9bd82;border-radius:9px;background:linear-gradient(135deg,#214b3a,#10291f);color:#f4e8c8;font:800 11px Manrope,sans-serif;letter-spacing:1.6px;box-shadow:0 7px 24px #0008;z-index:8}
+@media(pointer:coarse){#worldAction{display:block;bottom:160px}#mobileControls{bottom:88px}}
