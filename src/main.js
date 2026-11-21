@@ -247,8 +247,91 @@ const actionHint=document.createElement('div');actionHint.id='worldToast';action
 const actionButton=document.createElement('button');actionButton.id='worldAction';actionButton.textContent='F  INTERACT';document.querySelector('#app').appendChild(actionButton);actionButton.addEventListener('click',interactWorld);
 addEventListener('keydown',e=>{if(e.key.toLowerCase()==='f'&&!e.repeat){interactWorld()}});
 
-// Player placeholder
-const player=new THREE.Group();scene.add(player);const skin=M('#9a684c'),shirt=M('#315d4d'),pants=M('#303b49');const body=new THREE.Mesh(new THREE.CapsuleGeometry(.43,.78,5,9),shirt);body.position.y=1.35;player.add(body);const head=new THREE.Mesh(new THREE.SphereGeometry(.31,16,12),skin);head.position.y=2.35;player.add(head);const hair=new THREE.Mesh(new THREE.SphereGeometry(.32,12,8,0,Math.PI*2,0,Math.PI*.58),M('#211d19'));hair.position.y=2.48;player.add(hair);for(const s of [-1,1]){const leg=new THREE.Mesh(new THREE.CapsuleGeometry(.17,.72,4,8),pants);leg.position.set(s*.22,.48,0);player.add(leg);const arm=new THREE.Mesh(new THREE.CapsuleGeometry(.13,.63,4,8),skin);arm.position.set(s*.55,1.4,0);player.add(arm);box(player,s*.22,.1,.1,.32,.18,.48,m.dark)}player.position.set(0,0,24);
+// Detailed articulated player model — role outfit, face, hair, footwear and accessories.
+const player=new THREE.Group();scene.add(player);
+let skin,shirt,pants,activeRole='Explorer',activeGender='Male';
+const avatarParts=new THREE.Group();player.add(avatarParts);
+const mat=(c,r=.82,metal=0)=>new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:metal});
+function part(parent,geo,material,x,y,z,sx=1,sy=1,sz=1){const o=new THREE.Mesh(geo,material);o.position.set(x,y,z);o.scale.set(sx,sy,sz);o.castShadow=true;o.receiveShadow=true;parent.add(o);return o}
+function buildAvatar(role='Explorer',gender='Male'){
+ while(avatarParts.children.length)avatarParts.remove(avatarParts.children[0]);
+ activeRole=role;activeGender=gender;
+ const looks={
+  Explorer:{top:'#315d4d',bottom:'#303b49',shoe:'#242a29',accent:'#c8a45e',outer:null},
+  Driver:{top:'#c5a36b',bottom:'#544b38',shoe:'#272b29',accent:'#344d3f',outer:null},
+  Doctor:{top:'#e9eee8',bottom:'#315b60',shoe:'#f0eee5',accent:'#4d9a9a',outer:'#4d9a9a'},
+  Police:{top:'#b9a16f',bottom:'#494538',shoe:'#252824',accent:'#263f35',outer:null},
+  Student:{top:'#e8e4d7',bottom:'#344b63',shoe:'#282b2d',accent:'#a84a3b',outer:null},
+  Farmer:{top:'#6d8b4d',bottom:'#574537',shoe:'#3a3028',accent:'#c6a45f',outer:null},
+  Shopkeeper:{top:'#8a6548',bottom:'#303b49',shoe:'#272b29',accent:'#c69b56',outer:null}
+ }[role]||{top:'#315d4d',bottom:'#303b49',shoe:'#242a29',accent:'#c8a45e'};
+ const skinMat=mat('#a96f51'),hairMat=mat(gender==='Female'?'#171615':'#24201c'),topMat=mat(looks.top),bottomMat=mat(looks.bottom),shoeMat=mat(looks.shoe),accentMat=mat(looks.accent,.45,.2);
+ const bodyGeo=new THREE.CapsuleGeometry(.31,.72,8,14);
+ part(avatarParts,bodyGeo,topMat,0,1.42,0,1.13,1.05,.72);
+ part(avatarParts,new THREE.CylinderGeometry(.29,.36,.27,16),topMat,0,1.03,0,1,1,.78);
+ part(avatarParts,new THREE.SphereGeometry(.25,16,12),skinMat,0,2.27,0,1,1.1,.94);
+ // ears, nose, eyes and brows give the face a readable human silhouette.
+ for(const side of [-1,1]){
+  part(avatarParts,new THREE.SphereGeometry(.07,10,8),skinMat,side*.245,2.27,0,1,.9,.75);
+  part(avatarParts,new THREE.SphereGeometry(.035,10,8),mat('#241f1d'),side*.092,2.31,-.218,1,1,.55);
+  part(avatarParts,new THREE.CapsuleGeometry(.018,.075,3,6),hairMat,side*.09,2.39,-.218,1,1,.7);
+ }
+ part(avatarParts,new THREE.ConeGeometry(.055,.13,8),skinMat,0,2.24,-.25,1,1,1).rotation.x=-Math.PI/2;
+ part(avatarParts,new THREE.SphereGeometry(.265,16,10,0,Math.PI*2,0,Math.PI*.56),hairMat,0,2.42,.015,1,1,.98);
+ if(gender==='Female'){
+  part(avatarParts,new THREE.SphereGeometry(.22,12,10),hairMat,0,2.22,.13,1,1.4,1);
+  part(avatarParts,new THREE.SphereGeometry(.09,10,8),hairMat,-.24,2.22,.08,1,1.5,1);
+  part(avatarParts,new THREE.SphereGeometry(.09,10,8),hairMat,.24,2.22,.08,1,1.5,1);
+ }
+ // Shirt collar, placket and buttons.
+ part(avatarParts,new THREE.CylinderGeometry(.09,.13,.14,10),mat('#e7ddc7'),0,1.91,-.015,1,1,.8);
+ for(let y=1.63;y>1.18;y-=.13)part(avatarParts,new THREE.SphereGeometry(.025,8,6),accentMat,0,y,-.226);
+ // Legs, knees, arms, hands and shoes are separate pieces for a less blocky silhouette.
+ const limbs=[];
+ for(const side of [-1,1]){
+  const leg=new THREE.Group();leg.position.set(side*.145,.99,0);avatarParts.add(leg);
+  part(leg,new THREE.CapsuleGeometry(.105,.48,6,10),bottomMat,0,-.27,0,1,1,.92);
+  part(leg,new THREE.SphereGeometry(.105,10,8),bottomMat,0,-.48,-.005,1,1,.95);
+  part(leg,new THREE.CapsuleGeometry(.105,.15,4,8),shoeMat,0,-.61,-.075,1,.55,1.45);
+  limbs.push(leg);
+  const arm=new THREE.Group();arm.position.set(side*.34,1.72,0);avatarParts.add(arm);
+  part(arm,new THREE.CapsuleGeometry(.105,.38,6,10),topMat,0,-.2,0,1,1,.95);
+  part(arm,new THREE.CapsuleGeometry(.075,.25,5,8),skinMat,0,-.52,-.005);
+  part(arm,new THREE.SphereGeometry(.09,10,8),skinMat,0,-.67,-.005);
+  limbs.push(arm);
+ }
+ // Role-specific accessories.
+ if(role==='Doctor'){
+  part(avatarParts,new THREE.CapsuleGeometry(.33,.72,5,10),mat('#f7f7f0'),0,1.43,.13,1.02,1.02,.25);
+  part(avatarParts,new THREE.CylinderGeometry(.018,.018,.5,8),accentMat,0,1.45,-.245);
+  part(avatarParts,new THREE.BoxGeometry(.18,.22,.035),mat('#3b9a9a'),.21,1.63,-.245);
+  const scope=part(avatarParts,new THREE.TorusGeometry(.13,.025,8,18,Math.PI),mat('#b8c7c5',.3,.65),.25,1.83,-.16);scope.rotation.z=Math.PI;
+ }else if(role==='Police'){
+  part(avatarParts,new THREE.CylinderGeometry(.24,.24,.09,16),mat('#263d33'),0,2.62,0);
+  part(avatarParts,new THREE.CylinderGeometry(.18,.22,.18,16),mat('#263d33'),0,2.72,0);
+  part(avatarParts,new THREE.BoxGeometry(.22,.1,.035),accentMat,0,2.7,-.21);
+  part(avatarParts,new THREE.BoxGeometry(.14,.16,.035),accentMat,.2,1.63,-.245);
+ }else if(role==='Driver'){
+  part(avatarParts,new THREE.CylinderGeometry(.25,.27,.08,16),mat('#c3a36b'),0,2.62,0);
+  part(avatarParts,new THREE.CylinderGeometry(.2,.23,.16,16),mat('#c3a36b'),0,2.72,0);
+  part(avatarParts,new THREE.BoxGeometry(.18,.18,.035),accentMat,.2,1.62,-.245);
+ }else if(role==='Student'){
+  part(avatarParts,new THREE.BoxGeometry(.37,.23,.09),mat('#263e62'),0,1.43,.25);
+  part(avatarParts,new THREE.BoxGeometry(.27,.3,.12),mat('#8b563b'),0,1.45,.32);
+ }else if(role==='Farmer'){
+  part(avatarParts,new THREE.CylinderGeometry(.31,.31,.07,16),mat('#9c7541'),0,2.59,0);
+  part(avatarParts,new THREE.CylinderGeometry(.2,.23,.12,16),mat('#9c7541'),0,2.65,0);
+  part(avatarParts,new THREE.CylinderGeometry(.055,.055,.36,8),mat('#b98b55'),-.4,1.15,-.08);
+ }else if(role==='Shopkeeper'){
+  part(avatarParts,new THREE.BoxGeometry(.2,.2,.04),accentMat,.21,1.63,-.245);
+ }
+ // A subtle belt and cuff details finish the uniform.
+ part(avatarParts,new THREE.CylinderGeometry(.32,.32,.075,16),accentMat,0,1.08,0,1,1,.78);
+ for(const side of [-1,1])part(avatarParts,new THREE.TorusGeometry(.105,.018,6,12),accentMat,side*.145,.92,0);
+ avatarParts.userData.limbs=limbs;
+}
+buildAvatar();
+player.position.set(0,0,24);
 const keys={};
 let yaw=0,pitch=.16,drag=false,px=0,py=0;
 const setKey=(key,value)=>{keys[key.toLowerCase()]=value};
@@ -279,5 +362,9 @@ function animate(){
 }
 animate();
 setTimeout(()=>{if(!startupFailed){document.querySelector('#loading')?.classList.add('hide');document.querySelector('#characterSetup')?.classList.add('show')}},1800);
-document.querySelector('#startGame')?.addEventListener('click',()=>{const nickname=(document.querySelector('#playerNickname')?.value||'').trim()||'Traveller';const role=document.querySelector('#playerRole')?.value||'Explorer';const gender=document.querySelector('#playerGender')?.value||'Not specified';const roleColors={Explorer:'#315d4d',Student:'#3d6284',Driver:'#a65d36',Farmer:'#587b3e',Doctor:'#4d8a8b',Police:'#344b69',Shopkeeper:'#8b6441'};shirt.color.set(roleColors[role]||'#315d4d');document.querySelector('#characterSetup')?.classList.remove('show');toastWorld(nickname+' · '+gender+' · '+role);});
+const roleStarts={Explorer:{x:0,z:24,area:'Muthanga Village'},Driver:{x:28,z:83,area:'Muthanga Bus Stand'},Doctor:{x:-73,z:18,area:'St Jude Medical Centre'},Police:{x:-15,z:14,area:'Muthanga Police Station'},Student:{x:78,z:57,area:'Government School'},Farmer:{x:-145,z:92,area:'Kuttanad Farm Fields'},Shopkeeper:{x:53,z:-28,area:'Malabar Market Street'}};
+function refreshCharacterChoice(){const role=document.querySelector('#playerRole')?.value||'Explorer';const gender=document.querySelector('#playerGender')?.value||'Male';buildAvatar(role,gender);const start=roleStarts[role]||roleStarts.Explorer;const area=document.querySelector('#roleStartArea');if(area)area.textContent='STARTING AREA  ·  '+start.area;const detail=document.querySelector('#roleDescription');if(detail)detail.textContent=({Explorer:'Explore the island and discover hidden places.',Driver:'Begin at the bus depot with the Malabar Express nearby.',Doctor:'Start outside the hospital campus in your medical uniform.',Police:'Start at the police station and patrol the village.',Student:'Begin at the school campus in student uniform.',Farmer:'Start beside the paddy fields and farm lanes.',Shopkeeper:'Begin on the market street among local shops.'})[role]||''}
+document.querySelector('#playerRole')?.addEventListener('change',refreshCharacterChoice);
+document.querySelector('#playerGender')?.addEventListener('change',refreshCharacterChoice);
+document.querySelector('#startGame')?.addEventListener('click',()=>{const nickname=(document.querySelector('#playerNickname')?.value||'').trim()||'Traveller';const role=document.querySelector('#playerRole')?.value||'Explorer';const gender=document.querySelector('#playerGender')?.value||'Male';const start=roleStarts[role]||roleStarts.Explorer;buildAvatar(role,gender);player.position.set(start.x,0,start.z);player.visible=true;facing=Math.PI;camera.position.set(start.x,5.2,start.z+10);yaw=0;pitch=.16;document.querySelector('#characterSetup')?.classList.remove('show');toastWorld(nickname+' · '+role+' · '+start.area);if(role==='Driver')toastWorld('Driver shift starts at Muthanga Bus Stand');});
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.6))});
