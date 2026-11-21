@@ -10,7 +10,31 @@ const world=new THREE.Group();scene.add(world);
 function box(p,x,y,z,w,h,d,ma,cast=true){const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),ma);o.position.set(x,y,z);o.castShadow=cast;o.receiveShadow=true;p.add(o);return o}
 function cyl(p,x,y,z,rt,rb,h,ma,n=10){const o=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,n),ma);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;p.add(o);return o}
 function label(t,x,y,z,w=13,h=2){const c=document.createElement('canvas');c.width=640;c.height=128;const q=c.getContext('2d');q.fillStyle='#173b32';q.fillRect(0,0,640,128);q.strokeStyle='#d8c38d';q.lineWidth=5;q.strokeRect(4,4,632,120);q.fillStyle='#f4e9cf';q.font='bold 43px Arial';q.textAlign='center';q.textBaseline='middle';q.fillText(t,320,66);const tx=new THREE.CanvasTexture(c);const s=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({map:tx,transparent:true,side:THREE.DoubleSide}));s.position.set(x,y,z);world.add(s);return s}
-function terrain(){const geo=new THREE.PlaneGeometry(390,390,100,100),p=geo.attributes.position;for(let i=0;i<p.count;i++){const x=p.getX(i),z=p.getY(i);let h=1.4*Math.sin(x*.027)*Math.cos(z*.024)+.65*Math.sin((x+z)*.055);h+=Math.max(0,1-Math.hypot(x-140,z+80)/105)**2*28+Math.max(0,1-Math.hypot(x+155,z-110)/115)**2*23;if(Math.abs(x)<108&&Math.abs(z)<100)h*=.28;p.setZ(i,h)}geo.computeVertexNormals();const g=new THREE.Mesh(geo,m.grass);g.rotation.x=-Math.PI/2;g.receiveShadow=true;world.add(g);for(let r=0;r<2;r++)for(let i=0;i<18;i++){const a=i*Math.PI*2/18,rad=r?178:205,h=30+(i%5)*9+r*8;const hill=new THREE.Mesh(new THREE.ConeGeometry(24+r*7,h,7),M(r?'#52795a':'#64876a'));hill.position.set(Math.cos(a)*rad,h*.35-1,Math.sin(a)*rad);hill.scale.z=1.35;world.add(hill)}}terrain();
+function terrain(){
+ const ocean=new THREE.Mesh(new THREE.PlaneGeometry(1800,1800),M('#176f89',.22,.18));
+ ocean.rotation.x=-Math.PI/2;ocean.position.y=-5.5;ocean.receiveShadow=true;world.add(ocean);
+ const sand=new THREE.Mesh(new THREE.RingGeometry(213,237,160),M('#c9b58a',.94));
+ sand.rotation.x=-Math.PI/2;sand.position.y=-3.7;world.add(sand);
+ const geo=new THREE.PlaneGeometry(560,560,180,180),p=geo.attributes.position;
+ for(let i=0;i<p.count;i++){
+  const x=p.getX(i),z=p.getY(i),angle=Math.atan2(z,x);
+  const coast=224+12*Math.sin(angle*3+0.7)+8*Math.sin(angle*7-1.1)+5*Math.cos(angle*11);
+  const r=Math.hypot(x,z);
+  let h=1.4*Math.sin(x*.027)*Math.cos(z*.024)+.65*Math.sin((x+z)*.055);
+  h+=Math.max(0,1-Math.hypot(x-140,z+80)/105)**2*28+Math.max(0,1-Math.hypot(x+155,z-110)/115)**2*23;
+  if(Math.abs(x)<108&&Math.abs(z)<100)h*=.28;
+  const edge=THREE.MathUtils.clamp((coast-r)/35,0,1);
+  h=h*edge-5.1*(1-edge);
+  p.setZ(i,h);
+ }
+ geo.computeVertexNormals();
+ const ground=new THREE.Mesh(geo,m.grass);ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;ground.castShadow=false;world.add(ground);
+ for(let r=0;r<2;r++)for(let i=0;i<18;i++){
+  const a=i*Math.PI*2/18,rad=r?178:205,h=30+(i%5)*9+r*8;
+  const hill=new THREE.Mesh(new THREE.ConeGeometry(24+r*7,h,7),M(r?'#52795a':'#64876a'));
+  hill.position.set(Math.cos(a)*rad,h*.35-1,Math.sin(a)*rad);hill.scale.z=1.35;world.add(hill)
+ }
+}
 function road(pts,width,ma=m.road){const curve=new THREE.CatmullRomCurve3(pts.map(p=>new THREE.Vector3(p[0],.15,p[1]))),v=[],ix=[],steps=150;for(let i=0;i<=steps;i++){const t=i/steps,p=curve.getPoint(t),d=curve.getTangent(t),nx=-d.z,nz=d.x;v.push(p.x+nx*width/2,p.y,p.z+nz*width/2,p.x-nx*width/2,p.y,p.z-nz*width/2);if(i<steps){const a=i*2;ix.push(a,a+1,a+2,a+1,a+3,a+2)}}const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(v,3));g.setIndex(ix);g.computeVertexNormals();const mesh=new THREE.Mesh(g,ma);mesh.receiveShadow=true;world.add(mesh);return curve}
 const mainRoad=road([[-175,18],[-125,13],[-90,0],[-55,-2],[-20,0],[15,2],[48,5],[83,12],[118,23],[160,35]],10);
 road([[-55,-2],[-65,-28],[-72,-57],[-82,-95],[-110,-135]],7);road([[48,5],[62,-25],[82,-48],[112,-72],[150,-98]],7);road([[-20,0],[-12,27],[-8,58],[-18,92],[-38,125]],7);road([[83,12],[100,0],[124,-8],[150,-12]],6,m.asphalt);
