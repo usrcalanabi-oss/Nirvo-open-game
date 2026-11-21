@@ -93,8 +93,8 @@ for(const z of [-3.7,-1.25,1.25,3.7])for(const x of [-2.08,2.08]){box(driveBus,x
 box(driveBus,0,3.35,0,4.15,.18,10.9,busStripe);for(const x of [-1.5,1.5])for(const z of [-3.65,3.65]){const w=cyl(driveBus,x,.75,z,.68,.68,.42,m.dark,16);w.rotation.z=Math.PI/2}
 for(const x of [-1.35,1.35]){box(driveBus,x,1.05,-5.58,.55,.35,.16,M('#fff0c2'));box(driveBus,x,1.05,5.58,.55,.35,.16,m.red)}
 label('NIRVO MALABAR EXPRESS',5,4.2,23,12,1.15);
-let driving=false,busSpeed=0,busSteer=0,busYaw=0,busDistance=0;
-const busHud=document.createElement('div');busHud.id='busHud';busHud.innerHTML='<div class="bus-head"><b>NIRVO TRANSIT</b><span>LINE 01 · MALABAR</span></div><div class="bus-speed"><strong id="busSpeed">0</strong><small>KM/H</small><em id="busGear">N</em></div><div class="bus-route" id="busRoute">MUTHANGA BUS STAND</div><div class="bus-help">W / ▲ ACCELERATE · S / ▼ BRAKE / REVERSE · A D STEER · SPACE HANDBRAKE · E EXIT</div><div class="bus-progress"><i id="busProgress"></i></div>';document.querySelector('#app').appendChild(busHud);
+let driving=false,busSpeed=0,busSteer=0,busYaw=0,busDistance=0,busPassengers=0,nextStopIndex=1,stopWait=0;\nconst busStops=[{name:'MUTHANGA BUS STAND',x:5,z:23},{name:'MUTHANGA TOWN',x:-15,z:2},{name:'ST JUDE HOSPITAL',x:-73,z:4},{name:'WAYANAD SCHOOL',x:78,z:44},{name:'NATURE PARK',x:130,z:105}];\nfor(const st of busStops.slice(1)){const marker=new THREE.Group();marker.position.set(st.x,0,st.z);world.add(marker);cyl(marker,0,1.6,0,.12,.12,3.2,m.brass,8);box(marker,0,3.35,0,2.8,.9,.16,m.dark);label('BUS STOP',st.x,4.3,st.z,4.5,.8)}
+const busHud=document.createElement('div');busHud.id='busHud';busHud.innerHTML='<div class="bus-head"><b>NIRVO TRANSIT</b><span>LINE 01 · MALABAR</span></div><div class="bus-speed"><strong id="busSpeed">0</strong><small>KM/H</small><em id="busGear">N</em></div><div class="bus-route" id="busRoute">NEXT: MUTHANGA TOWN</div><div class="bus-passengers" id="busPassengers">PASSENGERS 0 / 24</div><div class="bus-help">W / ▲ ACCELERATE · S / ▼ BRAKE / REVERSE · A D STEER · SPACE HANDBRAKE · E EXIT</div><div class="bus-progress"><i id="busProgress"></i></div>';document.querySelector('#app').appendChild(busHud);
 const busEnter=document.createElement('button');busEnter.id='busEnter';busEnter.textContent='E  DRIVE BUS';document.querySelector('#app').appendChild(busEnter);
 function toggleBus(){if(!driving){if(player.position.distanceTo(driveBus.position)>12)return;driving=true;busSpeed=0;busYaw=driveBus.rotation.y;player.visible=false;busEnter.style.display='none';busHud.classList.add('active');document.querySelector('#driveControls')?.classList.add('active')}else{driving=false;player.visible=true;player.position.set(driveBus.position.x+4,0,driveBus.position.z+2);busHud.classList.remove('active');document.querySelector('#driveControls')?.classList.remove('active')}}
 busEnter.addEventListener('click',toggleBus);
@@ -106,7 +106,12 @@ function updateBus(dt){
  driveBus.position.x-=Math.sin(busYaw)*busSpeed*dt;driveBus.position.z-=Math.cos(busYaw)*busSpeed*dt;
  driveBus.position.x=THREE.MathUtils.clamp(driveBus.position.x,-185,185);driveBus.position.z=THREE.MathUtils.clamp(driveBus.position.z,-185,185);busDistance+=Math.abs(busSpeed)*dt;
  const kmh=Math.round(Math.abs(busSpeed)*3.6);document.querySelector('#busSpeed').textContent=kmh;document.querySelector('#busGear').textContent=busSpeed<-.1?'R':busSpeed>.1?'D':'N';
- document.querySelector('#busRoute').textContent=kmh?'MALABAR ROUTE · IN TRANSIT':'MUTHANGA BUS STAND · STOPPED';document.querySelector('#busProgress').style.width=Math.min(100,busDistance/18)+'%';
+ const stop=busStops[nextStopIndex%busStops.length],distance=Math.hypot(stop.x-driveBus.position.x,stop.z-driveBus.position.z);
+ if(distance<10&&Math.abs(busSpeed)<1){stopWait+=dt;if(stopWait>2.5){busPassengers=nextStopIndex===busStops.length-1?0:Math.min(24,busPassengers+4);nextStopIndex=(nextStopIndex+1)%busStops.length;stopWait=0}}
+ else stopWait=0;
+ document.querySelector('#busRoute').textContent='NEXT STOP: '+stop.name+' · '+Math.round(distance)+' M';
+ document.querySelector('#busPassengers').textContent='PASSENGERS '+busPassengers+' / 24';
+ document.querySelector('#busProgress').style.width=Math.min(100,busDistance/18)+'%';
 }
 addEventListener('keydown',e=>{if(e.key.toLowerCase()==='e'&&!e.repeat&&(driving||player.position.distanceTo(driveBus.position)<12))toggleBus()});
 document.querySelectorAll('[data-drive]').forEach(b=>{const k=b.dataset.drive,down=e=>{e.preventDefault();keys[k]=true},up=e=>{e.preventDefault();keys[k]=false};b.addEventListener('pointerdown',down);b.addEventListener('pointerup',up);b.addEventListener('pointerleave',up);b.addEventListener('pointercancel',up)});
