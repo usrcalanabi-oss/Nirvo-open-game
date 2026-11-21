@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#07131b" />
+    <meta name="description" content="NIRVO Open World — explore a living Kerala-inspired 3D town." />
+    <title>NIRVO OPEN WORLD</title>
+  </head>
+  <body>
+    <div id="app">
+      <div id="world"></div>
+      <div class="topbar">
+        <div class="brand"><span class="brand-mark">N</span><span>NIRVO <b>OPEN WORLD</b><small>KERALA LIFE SIMULATOR · WORLD BUILD 01</small></span></div>
+        <div class="world-status"><i></i> WORLD ONLINE <span>DAY 01 · 08:30 AM</span></div>
+      </div>
+      <div class="location-card"><small>YOU ARE EXPLORING</small><strong id="locationName">Greenfield Town</strong><span>KERALA, INDIA</span></div>
+      <div class="bottom-left"><span class="key">W A S D</span> MOVE <span class="dot">•</span> <span class="key">SHIFT</span> RUN <span class="dot">•</span> MOUSE DRAG LOOK</div>
+      <div class="bottom-right"><span class="live-dot"></span> OPEN WORLD PROTOTYPE <b>v0.1</b></div>
+      <div id="mobileControls" aria-label="Mobile movement controls">
+        <button data-move="forward">▲</button>
+        <div><button data-move="left">◀</button><button data-move="back">▼</button><button data-move="right">▶</button></div>
+      </div>
+      <div class="crosshair"></div>
+      <div class="loading" id="loading"><div class="loading-logo">N</div><strong>BUILDING YOUR WORLD</strong><span>GENERATING KERALA TOWN</span><div class="load-track"><i></i></div></div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
