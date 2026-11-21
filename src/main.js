@@ -96,7 +96,7 @@ label('NIRVO MALABAR EXPRESS',5,4.2,23,12,1.15);
 let driving=false,busSpeed=0,busSteer=0,busYaw=0,busDistance=0;
 const busHud=document.createElement('div');busHud.id='busHud';busHud.innerHTML='<div class="bus-head"><b>NIRVO TRANSIT</b><span>LINE 01 · MALABAR</span></div><div class="bus-speed"><strong id="busSpeed">0</strong><small>KM/H</small><em id="busGear">N</em></div><div class="bus-route" id="busRoute">MUTHANGA BUS STAND</div><div class="bus-help">W / ▲ ACCELERATE · S / ▼ BRAKE / REVERSE · A D STEER · SPACE HANDBRAKE · E EXIT</div><div class="bus-progress"><i id="busProgress"></i></div>';document.querySelector('#app').appendChild(busHud);
 const busEnter=document.createElement('button');busEnter.id='busEnter';busEnter.textContent='E  DRIVE BUS';document.querySelector('#app').appendChild(busEnter);
-function toggleBus(){if(!driving){if(player.position.distanceTo(driveBus.position)>12)return;driving=true;busSpeed=0;busYaw=driveBus.rotation.y;player.visible=false;busEnter.style.display='none';busHud.classList.add('active')}else{driving=false;player.visible=true;player.position.set(driveBus.position.x+4,0,driveBus.position.z+2);busHud.classList.remove('active')}}
+function toggleBus(){if(!driving){if(player.position.distanceTo(driveBus.position)>12)return;driving=true;busSpeed=0;busYaw=driveBus.rotation.y;player.visible=false;busEnter.style.display='none';busHud.classList.add('active');document.querySelector('#driveControls')?.classList.add('active')}else{driving=false;player.visible=true;player.position.set(driveBus.position.x+4,0,driveBus.position.z+2);busHud.classList.remove('active');document.querySelector('#driveControls')?.classList.remove('active')}}
 busEnter.addEventListener('click',toggleBus);
 function updateBus(dt){
  const throttle=keys.w||keys.arrowup,brake=keys.s||keys.arrowdown,steer=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0);
@@ -116,7 +116,7 @@ const player=new THREE.Group();scene.add(player);const skin=M('#9a684c'),shirt=M
 const keys={};
 let yaw=0,pitch=.16,drag=false,px=0,py=0;
 const setKey=(key,value)=>{keys[key.toLowerCase()]=value};
-addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','shift'].includes(k)){setKey(k,true);e.preventDefault()}});
+addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','shift',' '].includes(k)){setKey(k,true);e.preventDefault()}});
 addEventListener('keyup',e=>setKey(e.key,false));
 addEventListener('blur',()=>{for(const k of Object.keys(keys))keys[k]=false;drag=false});
 renderer.domElement.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&e.button!==0)return;drag=true;px=e.clientX;py=e.clientY;renderer.domElement.setPointerCapture(e.pointerId)});
