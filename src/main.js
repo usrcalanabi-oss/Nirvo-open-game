@@ -1,13 +1,14 @@
 import * as THREE from 'three';
 import './style.css';
+const typing=e=>/^(INPUT|SELECT|TEXTAREA)$/.test(e.target?.tagName);
 let startupFailed=false;
 function showStartupError(message){startupFailed=true;const panel=document.querySelector('#loading');if(!panel)return;panel.classList.remove('hide');panel.innerHTML='<div class="loading-mark">N</div><strong>3D WORLD COULD NOT START</strong><span id="startupErrorText"></span>';const line=panel.querySelector('#startupErrorText');if(line)line.textContent=String(message||'Unknown startup error').slice(0,180)}
 addEventListener('error',event=>showStartupError(event.message||'JavaScript error'));
 addEventListener('unhandledrejection',event=>showStartupError(event.reason?.message||event.reason||'Module loading error'));
 const scene=new THREE.Scene();scene.background=new THREE.Color('#a8c6c3');scene.fog=new THREE.FogExp2('#a8c6c3',.0027);
 const camera=new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.1,900);camera.position.set(0,7,10);
-const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.16;document.querySelector('#world').appendChild(renderer.domElement);
-scene.add(new THREE.HemisphereLight(0xdaf0f1,0x536b46,2.15));const sun=new THREE.DirectionalLight(0xffe3bd,3);sun.position.set(-90,145,65);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-180,right:180,top:180,bottom:-180,near:1,far:400});scene.add(sun);
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,1.25));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.16;document.querySelector('#world').appendChild(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xdaf0f1,0x536b46,2.15));const sun=new THREE.DirectionalLight(0xffe3bd,3);sun.position.set(-90,145,65);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);Object.assign(sun.shadow.camera,{left:-180,right:180,top:180,bottom:-180,near:1,far:400});scene.add(sun);
 const M=(c,r=.88,m=0)=>new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:m});
 const m={grass:M('#638e52'),earth:M('#9a7958'),road:M('#343b3a'),concrete:M('#b7b5a6'),white:M('#e8e2d2'),plaster:M('#e6dcc6'),plaster2:M('#d7dfd0'),roof:M('#914b37'),roofDark:M('#693b31'),wood:M('#5a3828'),wood2:M('#8c5c3b'),glass:M('#78aeb0',.22,.16),brass:M('#b58b45',.35,.55),leaf:M('#356b43'),leaf2:M('#4f8750'),trunk:M('#684b32'),water:M('#3f9ea5',.2,.15),dark:M('#242b28'),red:M('#c64d3d'),asphalt:M('#444a46')};
 const world=new THREE.Group();scene.add(world);
@@ -25,8 +26,7 @@ function terrain(){
   const coast=224+12*Math.sin(angle*3+0.7)+8*Math.sin(angle*7-1.1)+5*Math.cos(angle*11);
   const r=Math.hypot(x,z);
   let h=1.4*Math.sin(x*.027)*Math.cos(z*.024)+.65*Math.sin((x+z)*.055);
-  h+=Math.max(0,1-Math.hypot(x-140,z+80)/105)**2*28+Math.max(0,1-Math.hypot(x+155,z-110)/115)**2*23;
-  if(Math.abs(x)<108&&Math.abs(z)<100)h*=.28;
+  h*=.3;
   const edge=THREE.MathUtils.clamp((coast-r)/35,0,1);
   h=h*edge-5.1*(1-edge);
   p.setZ(i,h);
@@ -49,7 +49,7 @@ function house(x,z,i){const g=new THREE.Group();g.position.set(x,0,z);world.add(
 [[-37,-27],[-55,-27],[-73,-27],[-91,-27],[-37,-48],[-55,-48],[-73,-48],[-91,-48],[25,-28],[43,-28],[61,-28],[79,-28],[25,-49],[43,-49],[61,-49],[79,-49],[-35,34],[-54,34],[24,34],[43,34]].forEach((p,i)=>house(...p,i));
 function palm(x,z,s=1){const g=new THREE.Group();g.position.set(x,0,z);g.scale.setScalar(s);world.add(g);const t=cyl(g,0,3.4,0,.22,.36,6.8,m.trunk,8);t.rotation.z=.08;for(let i=0;i<9;i++){const a=i*Math.PI*2/9,l=new THREE.Mesh(new THREE.ConeGeometry(.42,5.2,5),i%2?m.leaf:m.leaf2);l.position.set(Math.cos(a)*1.7,6.5,Math.sin(a)*1.7);l.rotation.z=-Math.cos(a)*.78;l.rotation.x=Math.sin(a)*.78;l.castShadow=true;g.add(l)}}
 function tree(x,z,s=1){const g=new THREE.Group();g.position.set(x,0,z);world.add(g);cyl(g,0,2.2,0,.28,.42,4.4,m.trunk,8);for(let i=0;i<5;i++){const l=new THREE.Mesh(new THREE.IcosahedronGeometry(2.5*s,1),i%2?m.leaf:m.leaf2);l.position.set((Math.random()-.5)*2,4.6+(Math.random()-.5)*1.3,(Math.random()-.5)*2);l.scale.set(1,.8,1);l.castShadow=true;g.add(l)}}
-for(let i=0;i<125;i++){const x=(i*47)%340-170,z=(i*73)%340-170;if(Math.abs(x)<105&&Math.abs(z)<100)continue;i%3===0?palm(x,z,.8+i%4*.12):tree(x,z,.8+i%3*.15)}
+for(let i=0;i<70;i++){const x=(i*47)%340-170,z=(i*73)%340-170;if(Math.abs(x)<105&&Math.abs(z)<100)continue;i%3===0?palm(x,z,.8+i%4*.12):tree(x,z,.8+i%3*.15)}
 for(let x=-110;x<120;x+=17){palm(x,-13,.68);palm(x,13,.68)}for(let z=-95;z<100;z+=20){tree(-15,z,.7);tree(15,z,.7)}
 function publicBuilding(x,z,w,d,h,title,wall,roofMat){const g=new THREE.Group();g.position.set(x,0,z);world.add(g);box(g,0,h/2,0,w,h,d,M(wall));roof(g,w+1,d+1,h,M(roofMat));box(g,0,.2,d/2+1,w+.8,.35,2.2,m.wood);for(const px of [-w*.34,w*.34]){cyl(g,px,1.65,d/2+1.8,.15,.2,3.1,m.white,8);cyl(g,px,3.2,d/2+1.8,.24,.15,.2,m.brass,8)}box(g,0,1.15,d/2+.08,1.3,2.25,.16,m.wood);for(const px of [-w*.27,w*.27])box(g,px,2.1,d/2+.09,1.45,1.1,.12,m.glass);label(title,x,h+4,z,w*.95,2)}
 publicBuilding(-15,2,19,14,5.2,'MUTHANGA POLICE STATION','#e2d9c3','#8e4d38');publicBuilding(-73,4,23,17,6,'ST JUDE MEDICAL CENTRE','#e7e5d9','#7c5545');publicBuilding(28,78,22,17,5,'MUTHANGA BUS STAND','#e2d9c2','#92533e');publicBuilding(77,4,16,13,4.5,'PANCHAYAT OFFICE','#e4d8c1','#86543f');publicBuilding(78,44,16,13,4.5,'GOVT. SCHOOL','#d9e2d5','#76513d');publicBuilding(-105,4,15,12,4,'POST OFFICE','#e6d8c2','#89513b');
@@ -144,7 +144,7 @@ function updateBus(dt){
  document.querySelector('#busPassengers').textContent='PASSENGERS '+busPassengers+' / 24';
  document.querySelector('#busProgress').style.width=Math.min(100,busDistance/18)+'%';
 }
-addEventListener('keydown',e=>{if(e.key.toLowerCase()==='e'&&!e.repeat&&(driving||player.position.distanceTo(driveBus.position)<12))toggleBus()});
+addEventListener('keydown',e=>{if(typing(e))return;if(e.key.toLowerCase()==='e'&&!e.repeat&&(driving||player.position.distanceTo(driveBus.position)<12))toggleBus()});
 document.querySelectorAll('[data-drive]').forEach(b=>{const k=b.dataset.drive,down=e=>{e.preventDefault();keys[k]=true},up=e=>{e.preventDefault();keys[k]=false};b.addEventListener('pointerdown',down);b.addEventListener('pointerup',up);b.addEventListener('pointerleave',up);b.addEventListener('pointercancel',up)});
 
 
@@ -245,7 +245,7 @@ let insideBuildingExit={x:0,z:0};
 function toastWorld(message){const el=document.querySelector('#worldToast');if(!el)return;el.textContent=message;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),1600)}
 const actionHint=document.createElement('div');actionHint.id='worldToast';actionHint.className='world-toast';document.querySelector('#app').appendChild(actionHint);
 const actionButton=document.createElement('button');actionButton.id='worldAction';actionButton.textContent='F  INTERACT';document.querySelector('#app').appendChild(actionButton);actionButton.addEventListener('click',interactWorld);
-addEventListener('keydown',e=>{if(e.key.toLowerCase()==='f'&&!e.repeat){interactWorld()}});
+addEventListener('keydown',e=>{if(typing(e))return;if(e.key.toLowerCase()==='f'&&!e.repeat){interactWorld()}});
 
 // Detailed articulated player model — role outfit, face, hair, footwear and accessories.
 const player=new THREE.Group();scene.add(player);
@@ -335,7 +335,7 @@ player.position.set(0,0,24);
 const keys={};
 let yaw=0,pitch=.16,drag=false,px=0,py=0;
 const setKey=(key,value)=>{keys[key.toLowerCase()]=value};
-addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','shift',' '].includes(k)){setKey(k,true);e.preventDefault()}});
+addEventListener('keydown',e=>{if(typing(e))return;const k=e.key.toLowerCase();if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','shift',' '].includes(k)){setKey(k,true);e.preventDefault()}});
 addEventListener('keyup',e=>setKey(e.key,false));
 addEventListener('blur',()=>{for(const k of Object.keys(keys))keys[k]=false;drag=false});
 renderer.domElement.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&e.button!==0)return;drag=true;px=e.clientX;py=e.clientY;renderer.domElement.setPointerCapture(e.pointerId)});
@@ -367,4 +367,4 @@ function refreshCharacterChoice(){const role=document.querySelector('#playerRole
 document.querySelector('#playerRole')?.addEventListener('change',refreshCharacterChoice);
 document.querySelector('#playerGender')?.addEventListener('change',refreshCharacterChoice);
 document.querySelector('#startGame')?.addEventListener('click',()=>{const nickname=(document.querySelector('#playerNickname')?.value||'').trim()||'Traveller';const role=document.querySelector('#playerRole')?.value||'Explorer';const gender=document.querySelector('#playerGender')?.value||'Male';const start=roleStarts[role]||roleStarts.Explorer;buildAvatar(role,gender);player.position.set(start.x,0,start.z);player.visible=true;facing=Math.PI;camera.position.set(start.x,5.2,start.z+10);yaw=0;pitch=.16;document.querySelector('#characterSetup')?.classList.remove('show');toastWorld(nickname+' · '+role+' · '+start.area);if(role==='Driver')toastWorld('Driver shift starts at Muthanga Bus Stand');});
-addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.6))});
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.25))});
