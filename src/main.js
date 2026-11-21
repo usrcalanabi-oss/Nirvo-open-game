@@ -85,6 +85,32 @@ banyan(108,60,1.35);banyan(-5,145,1.1);for(const [x,z] of [[-160,45],[-115,90],[
 for(const [x,z] of [[-50,12],[-95,-8],[55,18],[92,68],[130,120],[150,-45]]){cyl(world,x,3,z,.12,.14,6,m.dark,8);box(world,x,6.1,z,.8,.18,.8,m.brass);box(world,x,6.4,z,.35,.15,.35,M('#f4d99a'))}
 label('LMHS · L.M. HIGH SCHOOL',78,11,54,17,1.4);label('MUTHANGA HERITAGE CAMPUS',-75,36,-30,24,1.7);
 
+
+const driveBus=new THREE.Group();driveBus.position.set(5,0,23);world.add(driveBus);
+const busBody=M('#d9e2d8',.48),busStripe=M('#c94d3d'),busGlass=M('#477f87',.2,.12);
+box(driveBus,0,1.85,0,4.1,3.25,10.8,busBody);box(driveBus,0,2.18,-5.47,3.8,1.35,.12,busGlass);box(driveBus,0,2.15,5.47,3.8,1.25,.12,busGlass);
+for(const z of [-3.7,-1.25,1.25,3.7])for(const x of [-2.08,2.08]){box(driveBus,x,2.25,z,.12,1.25,1.75,busGlass);box(driveBus,x,1.15,z,.13,.12,1.8,busStripe)}
+box(driveBus,0,3.35,0,4.15,.18,10.9,busStripe);for(const x of [-1.5,1.5])for(const z of [-3.65,3.65]){const w=cyl(driveBus,x,.75,z,.68,.68,.42,m.dark,16);w.rotation.z=Math.PI/2}
+for(const x of [-1.35,1.35]){box(driveBus,x,1.05,-5.58,.55,.35,.16,M('#fff0c2'));box(driveBus,x,1.05,5.58,.55,.35,.16,m.red)}
+label('NIRVO MALABAR EXPRESS',5,4.2,23,12,1.15);
+let driving=false,busSpeed=0,busSteer=0,busYaw=0,busDistance=0;
+const busHud=document.createElement('div');busHud.id='busHud';busHud.innerHTML='<div class="bus-head"><b>NIRVO TRANSIT</b><span>LINE 01 · MALABAR</span></div><div class="bus-speed"><strong id="busSpeed">0</strong><small>KM/H</small><em id="busGear">N</em></div><div class="bus-route" id="busRoute">MUTHANGA BUS STAND</div><div class="bus-help">W / ▲ ACCELERATE · S / ▼ BRAKE / REVERSE · A D STEER · SPACE HANDBRAKE · E EXIT</div><div class="bus-progress"><i id="busProgress"></i></div>';document.querySelector('#app').appendChild(busHud);
+const busEnter=document.createElement('button');busEnter.id='busEnter';busEnter.textContent='E  DRIVE BUS';document.querySelector('#app').appendChild(busEnter);
+function toggleBus(){if(!driving){if(player.position.distanceTo(driveBus.position)>12)return;driving=true;busSpeed=0;busYaw=driveBus.rotation.y;player.visible=false;busEnter.style.display='none';busHud.classList.add('active')}else{driving=false;player.visible=true;player.position.set(driveBus.position.x+4,0,driveBus.position.z+2);busHud.classList.remove('active')}}
+busEnter.addEventListener('click',toggleBus);
+function updateBus(dt){
+ const throttle=keys.w||keys.arrowup,brake=keys.s||keys.arrowdown,steer=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0);
+ if(throttle)busSpeed=Math.min(24,busSpeed+7.5*dt);else if(brake){if(busSpeed>0)busSpeed=Math.max(0,busSpeed-14*dt);else busSpeed=Math.max(-7,busSpeed-4.5*dt)}else busSpeed*=Math.exp(-.72*dt);
+ if(keys[' '])busSpeed*=Math.exp(-5*dt);
+ busSteer=THREE.MathUtils.damp(busSteer,steer,5,dt);busYaw+=busSteer*1.05*Math.min(1,Math.abs(busSpeed)/5)*dt*Math.sign(busSpeed||1);driveBus.rotation.y=busYaw;
+ driveBus.position.x-=Math.sin(busYaw)*busSpeed*dt;driveBus.position.z-=Math.cos(busYaw)*busSpeed*dt;
+ driveBus.position.x=THREE.MathUtils.clamp(driveBus.position.x,-185,185);driveBus.position.z=THREE.MathUtils.clamp(driveBus.position.z,-185,185);busDistance+=Math.abs(busSpeed)*dt;
+ const kmh=Math.round(Math.abs(busSpeed)*3.6);document.querySelector('#busSpeed').textContent=kmh;document.querySelector('#busGear').textContent=busSpeed<-.1?'R':busSpeed>.1?'D':'N';
+ document.querySelector('#busRoute').textContent=kmh?'MALABAR ROUTE · IN TRANSIT':'MUTHANGA BUS STAND · STOPPED';document.querySelector('#busProgress').style.width=Math.min(100,busDistance/18)+'%';
+}
+addEventListener('keydown',e=>{if(e.key.toLowerCase()==='e'&&!e.repeat&&(driving||player.position.distanceTo(driveBus.position)<12))toggleBus()});
+document.querySelectorAll('[data-drive]').forEach(b=>{const k=b.dataset.drive,down=e=>{e.preventDefault();keys[k]=true},up=e=>{e.preventDefault();keys[k]=false};b.addEventListener('pointerdown',down);b.addEventListener('pointerup',up);b.addEventListener('pointerleave',up);b.addEventListener('pointercancel',up)});
+
 // Player placeholder
 const player=new THREE.Group();scene.add(player);const skin=M('#9a684c'),shirt=M('#315d4d'),pants=M('#303b49');const body=new THREE.Mesh(new THREE.CapsuleGeometry(.43,.78,5,9),shirt);body.position.y=1.35;player.add(body);const head=new THREE.Mesh(new THREE.SphereGeometry(.31,16,12),skin);head.position.y=2.35;player.add(head);const hair=new THREE.Mesh(new THREE.SphereGeometry(.32,12,8,0,Math.PI*2,0,Math.PI*.58),M('#211d19'));hair.position.y=2.48;player.add(hair);for(const s of [-1,1]){const leg=new THREE.Mesh(new THREE.CapsuleGeometry(.17,.72,4,8),pants);leg.position.set(s*.22,.48,0);player.add(leg);const arm=new THREE.Mesh(new THREE.CapsuleGeometry(.13,.63,4,8),skin);arm.position.set(s*.55,1.4,0);player.add(arm);box(player,s*.22,.1,.1,.32,.18,.48,m.dark)}player.position.set(0,0,24);
 const keys={};
@@ -108,28 +134,9 @@ document.querySelectorAll('[data-key]').forEach(b=>{
 const clock=new THREE.Clock(),target=new THREE.Vector3(),velocity=new THREE.Vector3(),moveDir=new THREE.Vector3(),rightDir=new THREE.Vector3(),desired=new THREE.Vector3();
 let facing=Math.PI;
 function animate(){
- requestAnimationFrame(animate);
- const dt=Math.min(clock.getDelta(),.05);
- let forward=(keys.w||keys.arrowup?1:0)-(keys.s||keys.arrowdown?1:0);
- let side=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0);
- moveDir.set(-Math.sin(yaw)*forward+Math.cos(yaw)*side,0,-Math.cos(yaw)*forward-Math.sin(yaw)*side);
- if(moveDir.lengthSq()>1)moveDir.normalize();
- const sprint=!!keys.shift,maxSpeed=sprint?10.5:5.8;
- const desiredVelocity=moveDir.multiplyScalar(maxSpeed);
- const response=(forward||side)?10:13;
- velocity.lerp(desiredVelocity,1-Math.exp(-response*dt));
- player.position.addScaledVector(velocity,dt);
- player.position.x=THREE.MathUtils.clamp(player.position.x,-185,185);
- player.position.z=THREE.MathUtils.clamp(player.position.z,-185,185);
- if(velocity.lengthSq()>.06){
-  const wanted=Math.atan2(-velocity.x,-velocity.z);
-  let diff=((wanted-facing+Math.PI*3)%(Math.PI*2))-Math.PI;
-  facing+=diff*(1-Math.exp(14*dt));player.rotation.y=facing;
- }
- desired.set(player.position.x+Math.sin(yaw)*10,player.position.y+4.1+pitch*7,player.position.z+Math.cos(yaw)*10);
- camera.position.lerp(desired,1-Math.exp(5.5*dt));
- target.set(player.position.x,1.35,player.position.z);
- camera.lookAt(target);
+ requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05);
+ if(driving){updateBus(dt);desired.set(driveBus.position.x+Math.sin(busYaw)*15,7.2+pitch*8,driveBus.position.z+Math.cos(busYaw)*15);camera.position.lerp(desired,1-Math.exp(3.2*dt));target.set(driveBus.position.x,2.1,driveBus.position.z);camera.lookAt(target)}
+ else{let forward=(keys.w||keys.arrowup?1:0)-(keys.s||keys.arrowdown?1:0),side=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0);moveDir.set(-Math.sin(yaw)*forward+Math.cos(yaw)*side,0,-Math.cos(yaw)*forward-Math.sin(yaw)*side);if(moveDir.lengthSq()>1)moveDir.normalize();const desiredVelocity=moveDir.multiplyScalar(keys.shift?10.5:5.8);velocity.lerp(desiredVelocity,1-Math.exp(((forward||side)?10:13)*dt));player.position.addScaledVector(velocity,dt);player.position.x=THREE.MathUtils.clamp(player.position.x,-185,185);player.position.z=THREE.MathUtils.clamp(player.position.z,-185,185);if(velocity.lengthSq()>.06){const wanted=Math.atan2(-velocity.x,-velocity.z);let diff=((wanted-facing+Math.PI*3)%(Math.PI*2))-Math.PI;facing+=diff*(1-Math.exp(14*dt));player.rotation.y=facing}desired.set(player.position.x+Math.sin(yaw)*10,4.1+pitch*7,player.position.z+Math.cos(yaw)*10);camera.position.lerp(desired,1-Math.exp(5.5*dt));target.set(player.position.x,1.35,player.position.z);camera.lookAt(target);busEnter.style.display=player.position.distanceTo(driveBus.position)<12?'block':'none'}
  renderer.render(scene,camera);
 }
 animate();
