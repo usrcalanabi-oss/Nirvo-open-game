@@ -87,6 +87,51 @@ label('LMHS · L.M. HIGH SCHOOL',78,11,54,17,1.4);label('MUTHANGA HERITAGE CAMPU
 
 // Player placeholder
 const player=new THREE.Group();scene.add(player);const skin=M('#9a684c'),shirt=M('#315d4d'),pants=M('#303b49');const body=new THREE.Mesh(new THREE.CapsuleGeometry(.43,.78,5,9),shirt);body.position.y=1.35;player.add(body);const head=new THREE.Mesh(new THREE.SphereGeometry(.31,16,12),skin);head.position.y=2.35;player.add(head);const hair=new THREE.Mesh(new THREE.SphereGeometry(.32,12,8,0,Math.PI*2,0,Math.PI*.58),M('#211d19'));hair.position.y=2.48;player.add(hair);for(const s of [-1,1]){const leg=new THREE.Mesh(new THREE.CapsuleGeometry(.17,.72,4,8),pants);leg.position.set(s*.22,.48,0);player.add(leg);const arm=new THREE.Mesh(new THREE.CapsuleGeometry(.13,.63,4,8),skin);arm.position.set(s*.55,1.4,0);player.add(arm);box(player,s*.22,.1,.1,.32,.18,.48,m.dark)}player.position.set(0,0,24);
-const keys={};let yaw=0,pitch=.2,drag=false,px=0,py=0;addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(e.key.startsWith('Arrow'))e.preventDefault()});addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);renderer.domElement.addEventListener('pointerdown',e=>{drag=true;px=e.clientX;py=e.clientY;renderer.domElement.setPointerCapture(e.pointerId)});renderer.domElement.addEventListener('pointerup',()=>drag=false);renderer.domElement.addEventListener('pointermove',e=>{if(!drag)return;yaw-=(e.clientX-px)*.004;pitch=THREE.MathUtils.clamp(pitch+(e.clientY-py)*.002,-.08,.62);px=e.clientX;py=e.clientY});
-const mk={up:'w',down:'s',left:'a',right:'d'};document.querySelectorAll('[data-key]').forEach(b=>{const k=mk[b.dataset.key],on=e=>{e.preventDefault();keys[k]=true},off=e=>{e.preventDefault();keys[k]=false};b.addEventListener('pointerdown',on);b.addEventListener('pointerup',off);b.addEventListener('pointerleave',off);b.addEventListener('pointercancel',off)});
-const clock=new THREE.Clock(),target=new THREE.Vector3();function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.04),f=(keys.w||keys.arrowup?1:0)-(keys.s||keys.arrowdown?1:0),s=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0);if(f||s){const speed=(keys.shift?12:6.5)*dt,dir=new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw)),right=new THREE.Vector3(Math.cos(yaw),0,-Math.sin(yaw));player.position.addScaledVector(dir,f*speed);player.position.addScaledVector(right,s*speed);player.position.x=THREE.MathUtils.clamp(player.position.x,-185,185);player.position.z=THREE.MathUtils.clamp(player.position.z,-185,185);player.rotation.y=Math.atan2(dir.x*f+right.x*s,dir.z*f+right.z*s)}const desired=new THREE.Vector3(player.position.x+Math.sin(yaw)*10,player.position.y+4.3+pitch*6,player.position.z+Math.cos(yaw)*10);camera.position.lerp(desired,1-Math.pow(.001,dt));target.set(player.position.x,1.2,player.position.z);camera.lookAt(target);renderer.render(scene,camera)}animate();setTimeout(()=>document.querySelector('#loading')?.classList.add('hide'),1800);addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.6))});
+const keys={};
+let yaw=0,pitch=.16,drag=false,px=0,py=0;
+const setKey=(key,value)=>{keys[key.toLowerCase()]=value};
+addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright','shift'].includes(k)){setKey(k,true);e.preventDefault()}});
+addEventListener('keyup',e=>setKey(e.key,false));
+addEventListener('blur',()=>{for(const k of Object.keys(keys))keys[k]=false;drag=false});
+renderer.domElement.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&e.button!==0)return;drag=true;px=e.clientX;py=e.clientY;renderer.domElement.setPointerCapture(e.pointerId)});
+renderer.domElement.addEventListener('pointerup',()=>drag=false);
+renderer.domElement.addEventListener('pointercancel',()=>drag=false);
+renderer.domElement.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-px,dy=e.clientY-py;yaw-=dx*.0032;pitch=THREE.MathUtils.clamp(pitch+dy*.0017,-.12,.48);px=e.clientX;py=e.clientY});
+const mobileKeyMap={up:'w',down:'s',left:'a',right:'d'};
+document.querySelectorAll('[data-key]').forEach(b=>{
+ const k=mobileKeyMap[b.dataset.key];if(!k)return;
+ const press=e=>{e.preventDefault();setKey(k,true);b.setPointerCapture?.(e.pointerId)};
+ const release=e=>{e.preventDefault();setKey(k,false)};
+ b.addEventListener('pointerdown',press);b.addEventListener('pointerup',release);
+ b.addEventListener('pointerleave',release);b.addEventListener('pointercancel',release);
+});
+const clock=new THREE.Clock(),target=new THREE.Vector3(),velocity=new THREE.Vector3(),moveDir=new THREE.Vector3(),rightDir=new THREE.Vector3(),desired=new THREE.Vector3();
+let facing=Math.PI;
+function animate(){
+ requestAnimationFrame(animate);
+ const dt=Math.min(clock.getDelta(),.05);
+ let forward=(keys.w||keys.arrowup?1:0)-(keys.s||keys.arrowdown?1:0);
+ let side=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0);
+ moveDir.set(-Math.sin(yaw)*forward+Math.cos(yaw)*side,0,-Math.cos(yaw)*forward-Math.sin(yaw)*side);
+ if(moveDir.lengthSq()>1)moveDir.normalize();
+ const sprint=!!keys.shift,maxSpeed=sprint?10.5:5.8;
+ const desiredVelocity=moveDir.multiplyScalar(maxSpeed);
+ const response=(forward||side)?10:13;
+ velocity.lerp(desiredVelocity,1-Math.exp(-response*dt));
+ player.position.addScaledVector(velocity,dt);
+ player.position.x=THREE.MathUtils.clamp(player.position.x,-185,185);
+ player.position.z=THREE.MathUtils.clamp(player.position.z,-185,185);
+ if(velocity.lengthSq()>.06){
+  const wanted=Math.atan2(-velocity.x,-velocity.z);
+  let diff=((wanted-facing+Math.PI*3)%(Math.PI*2))-Math.PI;
+  facing+=diff*(1-Math.exp(14*dt));player.rotation.y=facing;
+ }
+ desired.set(player.position.x+Math.sin(yaw)*10,player.position.y+4.1+pitch*7,player.position.z+Math.cos(yaw)*10);
+ camera.position.lerp(desired,1-Math.exp(5.5*dt));
+ target.set(player.position.x,1.35,player.position.z);
+ camera.lookAt(target);
+ renderer.render(scene,camera);
+}
+animate();
+setTimeout(()=>document.querySelector('#loading')?.classList.add('hide'),1800);
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.6))});
