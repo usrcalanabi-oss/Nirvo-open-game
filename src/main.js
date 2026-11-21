@@ -1,7 +1,11 @@
 import * as THREE from 'three';
 import './style.css';
+let startupFailed=false;
+function showStartupError(message){startupFailed=true;const panel=document.querySelector('#loading');if(!panel)return;panel.classList.remove('hide');panel.innerHTML='<div class="loading-mark">N</div><strong>3D WORLD COULD NOT START</strong><span id="startupErrorText"></span>';const line=panel.querySelector('#startupErrorText');if(line)line.textContent=String(message||'Unknown startup error').slice(0,180)}
+addEventListener('error',event=>showStartupError(event.message||'JavaScript error'));
+addEventListener('unhandledrejection',event=>showStartupError(event.reason?.message||event.reason||'Module loading error'));
 const scene=new THREE.Scene();scene.background=new THREE.Color('#a8c6c3');scene.fog=new THREE.FogExp2('#a8c6c3',.0027);
-const camera=new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.1,900);
+const camera=new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.1,900);camera.position.set(0,7,10);
 const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.16;document.querySelector('#world').appendChild(renderer.domElement);
 scene.add(new THREE.HemisphereLight(0xdaf0f1,0x536b46,2.15));const sun=new THREE.DirectionalLight(0xffe3bd,3);sun.position.set(-90,145,65);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-180,right:180,top:180,bottom:-180,near:1,far:400});scene.add(sun);
 const M=(c,r=.88,m=0)=>new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:m});
@@ -35,6 +39,7 @@ function terrain(){
   hill.position.set(Math.cos(a)*rad,h*.35-1,Math.sin(a)*rad);hill.scale.z=1.35;world.add(hill)
  }
 }
+terrain();
 function road(pts,width,ma=m.road){const curve=new THREE.CatmullRomCurve3(pts.map(p=>new THREE.Vector3(p[0],.15,p[1]))),v=[],ix=[],steps=150;for(let i=0;i<=steps;i++){const t=i/steps,p=curve.getPoint(t),d=curve.getTangent(t),nx=-d.z,nz=d.x;v.push(p.x+nx*width/2,p.y,p.z+nz*width/2,p.x-nx*width/2,p.y,p.z-nz*width/2);if(i<steps){const a=i*2;ix.push(a,a+1,a+2,a+1,a+3,a+2)}}const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(v,3));g.setIndex(ix);g.computeVertexNormals();const mesh=new THREE.Mesh(g,ma);mesh.receiveShadow=true;world.add(mesh);return curve}
 const mainRoad=road([[-175,18],[-125,13],[-90,0],[-55,-2],[-20,0],[15,2],[48,5],[83,12],[118,23],[160,35]],10);
 road([[-55,-2],[-65,-28],[-72,-57],[-82,-95],[-110,-135]],7);road([[48,5],[62,-25],[82,-48],[112,-72],[150,-98]],7);road([[-20,0],[-12,27],[-8,58],[-18,92],[-38,125]],7);road([[83,12],[100,0],[124,-8],[150,-12]],6,m.asphalt);
@@ -273,5 +278,6 @@ function animate(){
  renderer.render(scene,camera);
 }
 animate();
-setTimeout(()=>document.querySelector('#loading')?.classList.add('hide'),1800);
+setTimeout(()=>{if(!startupFailed){document.querySelector('#loading')?.classList.add('hide');document.querySelector('#characterSetup')?.classList.add('show')}},1800);
+document.querySelector('#startGame')?.addEventListener('click',()=>{const nickname=(document.querySelector('#playerNickname')?.value||'').trim()||'Traveller';const role=document.querySelector('#playerRole')?.value||'Explorer';const gender=document.querySelector('#playerGender')?.value||'Not specified';const roleColors={Explorer:'#315d4d',Student:'#3d6284',Driver:'#a65d36',Farmer:'#587b3e',Doctor:'#4d8a8b',Police:'#344b69',Shopkeeper:'#8b6441'};shirt.color.set(roleColors[role]||'#315d4d');document.querySelector('#characterSetup')?.classList.remove('show');toastWorld(nickname+' · '+gender+' · '+role);});
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.6))});
