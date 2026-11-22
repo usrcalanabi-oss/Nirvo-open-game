@@ -51,7 +51,7 @@ function terrain(){
  ocean.rotation.x=-Math.PI/2;ocean.position.y=-5.5;ocean.receiveShadow=true;world.add(ocean);
  const sand=new THREE.Mesh(new THREE.RingGeometry(213,237,160),M('#c9b58a',.94));
  sand.rotation.x=-Math.PI/2;sand.position.y=-3.7;world.add(sand);
- const geo=new THREE.PlaneGeometry(560,560,180,180),p=geo.attributes.position;
+ const geo=new THREE.PlaneGeometry(560,560,mobileDevice?88:180,mobileDevice?88:180),p=geo.attributes.position;
  for(let i=0;i<p.count;i++){
   const x=p.getX(i),z=p.getY(i),angle=Math.atan2(z,x);
   const coast=224+12*Math.sin(angle*3+0.7)+8*Math.sin(angle*7-1.1)+5*Math.cos(angle*11);
@@ -66,13 +66,13 @@ function terrain(){
  const ground=new THREE.Mesh(geo,m.grass);ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;ground.castShadow=false;world.add(ground);
  for(let r=0;r<2;r++)for(let i=0;i<18;i++){
   const a=i*Math.PI*2/18,rad=r?178:205,h=30+(i%5)*9+r*8;
-  const hill=new THREE.Mesh(new THREE.SphereGeometry(1,28,18),M(r?'#52795a':'#64876a'));
+  const hill=new THREE.Mesh(new THREE.SphereGeometry(1,mobileDevice?14:28,mobileDevice?9:18),M(r?'#52795a':'#64876a'));
   hill.position.set(Math.cos(a)*rad,h*.16-1,Math.sin(a)*rad);hill.scale.set(27+r*8,h*.58,35+r*9);world.add(hill)
  }
 }
 terrain();
 function road(pts,width,ma=m.road){
- const curve=new THREE.CatmullRomCurve3(pts.map(p=>new THREE.Vector3(p[0],.15,p[1]))),v=[],ix=[],steps=220;
+ const curve=new THREE.CatmullRomCurve3(pts.map(p=>new THREE.Vector3(p[0],.15,p[1]))),v=[],ix=[],steps=mobileDevice?100:220;
  for(let i=0;i<=steps;i++){const t=i/steps,p=curve.getPoint(t),d=curve.getTangent(t),nx=-d.z,nz=d.x;v.push(p.x+nx*width/2,p.y,p.z+nz*width/2,p.x-nx*width/2,p.y,p.z-nz*width/2);if(i<steps){const a=i*2;ix.push(a,a+1,a+2,a+1,a+3,a+2)}}
  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(v,3));g.setIndex(ix);g.computeVertexNormals();const mesh=new THREE.Mesh(g,ma);mesh.receiveShadow=true;world.add(mesh);
  const edgeMat=new THREE.MeshStandardMaterial({color:'#d8d0b5',roughness:.8});
@@ -97,22 +97,19 @@ function house(x,z,i){const g=new THREE.Group();g.position.set(x,0,z);world.add(
 [[-37,-27],[-55,-27],[-73,-27],[-91,-27],[-37,-48],[-55,-48],[-73,-48],[-91,-48],[25,-28],[43,-28],[61,-28],[79,-28],[25,-49],[43,-49],[61,-49],[79,-49],[-35,34],[-54,34],[24,34],[43,34]].forEach((p,i)=>house(...p,i));
 function palm(x,z,s=1){
  const g=new THREE.Group();g.position.set(x,0,z);g.scale.setScalar(s);world.add(g);
- const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.17,.34,7.6,20,6),m.trunk);trunk.position.y=3.8;trunk.rotation.z=.045;trunk.castShadow=true;g.add(trunk);
- for(let i=0;i<11;i++){const a=i*Math.PI*2/11,dir=new THREE.Vector3(Math.cos(a),.2,Math.sin(a));
-  const curve=new THREE.QuadraticBezierCurve3(new THREE.Vector3(0,7.05,0),new THREE.Vector3(dir.x*2.4,8.2,dir.z*2.4),new THREE.Vector3(dir.x*4.4,5.5,dir.z*4.4));
-  const stem=new THREE.Mesh(new THREE.TubeGeometry(curve,14,.045,5,false),m.wood2);g.add(stem);
-  for(let j=0;j<13;j++){const t=.16+j*.061,p=curve.getPoint(t),tangent=curve.getTangent(t),leafGeo=new THREE.ConeGeometry(.105,1.2,5);const leaf=new THREE.Mesh(leafGeo,i%2?m.leaf:m.leaf2);leaf.position.copy(p).add(new THREE.Vector3(Math.cos(a)*.24,-.1,Math.sin(a)*.24));leaf.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),new THREE.Vector3(Math.cos(a)*.85,-.48,Math.sin(a)*.85));leaf.scale.set(.85,1.15,.72);leaf.castShadow=true;g.add(leaf)}
- }
+ const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.17,.34,7.6,mobileDevice?8:20,4),m.trunk);trunk.position.y=3.8;trunk.rotation.z=.045;g.add(trunk);
+ if(mobileDevice){for(let i=0;i<8;i++){const a=i*Math.PI/4,leaf=new THREE.Mesh(new THREE.ConeGeometry(.48,5.8,5),i%2?m.leaf:m.leaf2);leaf.position.set(Math.cos(a)*2.25,6.8,Math.sin(a)*2.25);leaf.rotation.z=Math.cos(a)*-.72;leaf.rotation.x=Math.sin(a)*.72;leaf.scale.set(.55,.42,.8);g.add(leaf)}const fruit=new THREE.Mesh(new THREE.SphereGeometry(.35,7,5),m.leaf);fruit.position.y=6.8;g.add(fruit);return;}
+ for(let i=0;i<11;i++){const a=i*Math.PI*2/11,dir=new THREE.Vector3(Math.cos(a),.2,Math.sin(a));const curve=new THREE.QuadraticBezierCurve3(new THREE.Vector3(0,7.05,0),new THREE.Vector3(dir.x*2.4,8.2,dir.z*2.4),new THREE.Vector3(dir.x*4.4,5.5,dir.z*4.4));const stem=new THREE.Mesh(new THREE.TubeGeometry(curve,14,.045,5,false),m.wood2);g.add(stem);for(let j=0;j<13;j++){const t=.16+j*.061,p=curve.getPoint(t),leafGeo=new THREE.ConeGeometry(.105,1.2,5);const leaf=new THREE.Mesh(leafGeo,i%2?m.leaf:m.leaf2);leaf.position.copy(p).add(new THREE.Vector3(Math.cos(a)*.24,-.1,Math.sin(a)*.24));leaf.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),new THREE.Vector3(Math.cos(a)*.85,-.48,Math.sin(a)*.85));leaf.scale.set(.85,1.15,.72);g.add(leaf)}}
  const coconuts=new THREE.Mesh(new THREE.SphereGeometry(.22,10,8),M('#47713a'));coconuts.position.set(0,6.9,0);g.add(coconuts);
 }
 function tree(x,z,s=1){
- const g=new THREE.Group();g.position.set(x,0,z);world.add(g);
- const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.18,.42,5.2,18,4),m.trunk);trunk.position.y=2.6;trunk.castShadow=true;g.add(trunk);
+ const g=new THREE.Group();g.position.set(x,0,z);world.add(g);const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.18,.42,5.2,mobileDevice?7:18,3),m.trunk);trunk.position.y=2.6;g.add(trunk);
+ if(mobileDevice){for(let i=0;i<5;i++){const a=i*Math.PI*2/5,crown=new THREE.Mesh(new THREE.SphereGeometry(1.8*s,8,6),i%2?m.leaf:m.leaf2);crown.position.set(Math.cos(a)*1.1,5.1+(i%2)*.35,Math.sin(a)*1.1);crown.scale.set(1.15,.85,1.05);g.add(crown)}return;}
  for(let i=0;i<7;i++){const a=i*Math.PI*2/7,branch=new THREE.Mesh(new THREE.CylinderGeometry(.045,.14,2.4,7),m.trunk);branch.position.set(Math.cos(a)*.75,4.25,Math.sin(a)*.75);branch.rotation.z=Math.cos(a)*-.38;branch.rotation.x=Math.sin(a)*.38;g.add(branch)}
- for(let i=0;i<8;i++){const crown=new THREE.Mesh(new THREE.SphereGeometry(1.8*s,24,18),i%2?m.leaf:m.leaf2);const a=i*Math.PI*2/8;crown.position.set(Math.cos(a)*1.35,5.15+(i%3)*.45,Math.sin(a)*1.35);crown.scale.set(1.15,.86,1.05);crown.castShadow=true;g.add(crown)}
+ for(let i=0;i<8;i++){const crown=new THREE.Mesh(new THREE.SphereGeometry(1.8*s,24,18),i%2?m.leaf:m.leaf2);const a=i*Math.PI*2/8;crown.position.set(Math.cos(a)*1.35,5.15+(i%3)*.45,Math.sin(a)*1.35);crown.scale.set(1.15,.86,1.05);g.add(crown)}
 }
-for(let i=0;i<70;i++){const x=(i*47)%340-170,z=(i*73)%340-170;if(Math.abs(x)<105&&Math.abs(z)<100)continue;i%3===0?palm(x,z,.8+i%4*.12):tree(x,z,.8+i%3*.15)}
-for(let x=-110;x<120;x+=17){palm(x,-13,.68);palm(x,13,.68)}for(let z=-95;z<100;z+=20){tree(-15,z,.7);tree(15,z,.7)}
+for(let i=0;i<(mobileDevice?28:70);i){const x=(i*47)%340-170,z=(i*73)%340-170;if(Math.abs(x)<105&&Math.abs(z)<100)continue;i%3===0?palm(x,z,.8+i%4*.12):tree(x,z,.8+i%3*.15)}
+for(let x=-110;x<120;x+=mobileDevice?34:17){palm(x,-13,.68);palm(x,13,.68)}for(let z=-95;z<100;z+=mobileDevice?40:20){tree(-15,z,.7);tree(15,z,.7)}
 function publicBuilding(x,z,w,d,h,title,wall,roofMat){const g=new THREE.Group();g.position.set(x,0,z);world.add(g);box(g,0,h/2,0,w,h,d,M(wall));roof(g,w+1,d+1,h,M(roofMat));box(g,0,.2,d/2+1,w+.8,.35,2.2,m.wood);for(const px of [-w*.34,w*.34]){cyl(g,px,1.65,d/2+1.8,.15,.2,3.1,m.white,8);cyl(g,px,3.2,d/2+1.8,.24,.15,.2,m.brass,8)}box(g,0,1.15,d/2+.08,1.3,2.25,.16,m.wood);for(const px of [-w*.27,w*.27])box(g,px,2.1,d/2+.09,1.45,1.1,.12,m.glass);label(title,x,h+4,z,w*.95,2)}
 publicBuilding(-15,2,19,14,5.2,'MUTHANGA POLICE STATION','#e2d9c3','#8e4d38');publicBuilding(-73,4,23,17,6,'ST JUDE MEDICAL CENTRE','#e7e5d9','#7c5545');publicBuilding(28,78,22,17,5,'MUTHANGA BUS STAND','#e2d9c2','#92533e');publicBuilding(77,4,16,13,4.5,'PANCHAYAT OFFICE','#e4d8c1','#86543f');publicBuilding(78,44,16,13,4.5,'GOVT. SCHOOL','#d9e2d5','#76513d');publicBuilding(-105,4,15,12,4,'POST OFFICE','#e6d8c2','#89513b');
 // Hospital tower and ambulance plaza
@@ -438,10 +435,10 @@ function createPedestrian(x,z,shirtColor,trouserColor,route){
 }
 createPedestrian(-27,-14,'#b94e3f','#35465a',[[-27,-14],[-14,-14],[-14,-9],[-27,-9]]);
 createPedestrian(-4,-16,'#e2c47d','#4d493d',[[-4,-16],[9,-16],[9,-10],[-4,-10]]);
-createPedestrian(20,-14,'#477d69','#333d4a',[[20,-14],[34,-14],[34,-8],[20,-8]]);
-createPedestrian(42,-14,'#5477a1','#55473b',[[42,-14],[56,-14],[56,-8],[42,-8]]);
-createPedestrian(8,66,'#c66d48','#394c63',[[8,66],[19,66],[19,72],[8,72]]);
-createPedestrian(-89,18,'#e0d7c4','#3d5149',[[-89,18],[-79,18],[-79,23],[-89,23]]);
+if(!mobileDevice)createPedestrian(20,-14,'#477d69','#333d4a',[[20,-14],[34,-14],[34,-8],[20,-8]]);
+if(!mobileDevice)createPedestrian(42,-14,'#5477a1','#55473b',[[42,-14],[56,-14],[56,-8],[42,-8]]);
+if(!mobileDevice)createPedestrian(8,66,'#c66d48','#394c63',[[8,66],[19,66],[19,72],[8,72]]);
+if(!mobileDevice)createPedestrian(-89,18,'#e0d7c4','#3d5149',[[-89,18],[-79,18],[-79,23],[-89,23]]);
 function updatePedestrians(dt){
  if(!world.visible)return;
  for(const npc of pedestrians){
