@@ -407,6 +407,52 @@ document.querySelectorAll('[data-key]').forEach(b=>{
  b.addEventListener('pointerdown',press);b.addEventListener('pointerup',release);
  b.addEventListener('pointerleave',release);b.addEventListener('pointercancel',release);
 });
+
+// ===== PHASE 4: LIVING MALABAR STREETS =====
+// Lightweight animated pedestrians add scale and life without heavy external assets.
+const pedestrians=[];
+function createPedestrian(x,z,shirtColor,trouserColor,route){
+ const root=new THREE.Group();root.position.set(x,0,z);world.add(root);
+ const shirtMat=mat(shirtColor),trouserMat=mat(trouserColor),skinMat=mat('#a96f51'),hairMat=mat('#24201c'),shoeMat=mat('#292b2a');
+ const torso=part(root,new THREE.CapsuleGeometry(.25,.58,6,10),shirtMat,0,1.28,0,1,.98,.78);
+ part(root,new THREE.SphereGeometry(.19,14,12),skinMat,0,2.02,0,1,1.08,.92);
+ part(root,new THREE.SphereGeometry(.195,14,10,0,Math.PI*2,0,Math.PI*.55),hairMat,0,2.14,.025);
+ const limbs=[];
+ for(const side of [-1,1]){
+  const leg=new THREE.Group();leg.position.set(side*.12,.91,0);root.add(leg);
+  part(leg,new THREE.CapsuleGeometry(.075,.39,5,8),trouserMat,0,-.25,0,1,1,.95);
+  part(leg,new THREE.CapsuleGeometry(.075,.13,4,8),shoeMat,0,-.5,-.045,1,.55,1.35);
+  limbs.push(leg);
+  const arm=new THREE.Group();arm.position.set(side*.27,1.55,0);root.add(arm);
+  part(arm,new THREE.CapsuleGeometry(.075,.34,5,8),shirtMat,0,-.19,0,1,1,.9);
+  part(arm,new THREE.SphereGeometry(.065,8,6),skinMat,0,-.43,-.01);
+  limbs.push(arm);
+ }
+ pedestrians.push({root,limbs,route,index:1,phase:Math.random()*6.28,speed:1.05+Math.random()*.35});
+}
+createPedestrian(-27,-14,'#b94e3f','#35465a',[[-27,-14],[-14,-14],[-14,-9],[-27,-9]]);
+createPedestrian(-4,-16,'#e2c47d','#4d493d',[[-4,-16],[9,-16],[9,-10],[-4,-10]]);
+createPedestrian(20,-14,'#477d69','#333d4a',[[20,-14],[34,-14],[34,-8],[20,-8]]);
+createPedestrian(42,-14,'#5477a1','#55473b',[[42,-14],[56,-14],[56,-8],[42,-8]]);
+createPedestrian(8,66,'#c66d48','#394c63',[[8,66],[19,66],[19,72],[8,72]]);
+createPedestrian(-89,18,'#e0d7c4','#3d5149',[[-89,18],[-79,18],[-79,23],[-89,23]]);
+function updatePedestrians(dt){
+ if(!world.visible)return;
+ for(const npc of pedestrians){
+  const targetPoint=npc.route[npc.index],dx=targetPoint[0]-npc.root.position.x,dz=targetPoint[1]-npc.root.position.z;
+  const distance=Math.hypot(dx,dz);
+  if(distance<.45){npc.index=(npc.index+1)%npc.route.length;continue}
+  const step=Math.min(distance,npc.speed*dt);
+  npc.root.position.x+=dx/distance*step;npc.root.position.z+=dz/distance*step;
+  npc.root.rotation.y=Math.atan2(-dx,-dz);
+  npc.phase+=dt*8;
+  const swing=Math.sin(npc.phase)*.48;
+  npc.limbs[0].rotation.x=swing;npc.limbs[2].rotation.x=-swing;
+  npc.limbs[1].rotation.x=-swing*.7;npc.limbs[3].rotation.x=swing*.7;
+  npc.root.position.y=Math.abs(Math.sin(npc.phase*2))*.025;
+ }
+}
+
 const clock=new THREE.Clock(),target=new THREE.Vector3(),velocity=new THREE.Vector3(),moveDir=new THREE.Vector3(),rightDir=new THREE.Vector3(),desired=new THREE.Vector3();
 let facing=Math.PI;
 function animate(){
@@ -436,6 +482,7 @@ function animate(){
   limbs[1].rotation.x=-swing*.72;limbs[3].rotation.x=swing*.72;
  }
  avatarParts.position.y=gaitSpeed>.05?Math.abs(Math.sin(phase*2))*.045*gaitSpeed:THREE.MathUtils.damp(avatarParts.position.y,0,12,dt);
+ updatePedestrians(dt);
  renderer.render(scene,camera);
 }
 animate();
