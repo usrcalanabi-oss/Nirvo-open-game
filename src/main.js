@@ -8,8 +8,14 @@ addEventListener('unhandledrejection',event=>showStartupError(event.reason?.mess
 const scene=new THREE.Scene();scene.background=new THREE.Color('#9bbfc0');scene.fog=new THREE.FogExp2('#9bbfc0',.0019);
 const sky=new THREE.Mesh(new THREE.SphereGeometry(850,40,24),new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,toneMapped:false,vertexShader:`varying vec3 vDirection;void main(){vec4 wp=modelMatrix*vec4(position,1.0);vDirection=normalize(wp.xyz-cameraPosition);gl_Position=projectionMatrix*viewMatrix*wp;}`,fragmentShader:`varying vec3 vDirection;void main(){float h=max(normalize(vDirection).y,0.0);vec3 horizon=vec3(0.77,0.84,0.82);vec3 zenith=vec3(0.20,0.43,0.64);vec3 col=mix(horizon,zenith,pow(h,0.62));float glow=pow(max(dot(normalize(vDirection),normalize(vec3(-0.45,0.55,0.7))),0.0),20.0);col+=vec3(0.24,0.19,0.11)*glow;gl_FragColor=vec4(col,1.0);}`}));sky.renderOrder=-10;scene.add(sky);
 const camera=new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.1,900);camera.position.set(0,7,10);
-const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,1.25));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.16;document.querySelector('#world').appendChild(renderer.domElement);
-scene.add(new THREE.HemisphereLight(0xdaf0f1,0x536b46,2.15));const sun=new THREE.DirectionalLight(0xffe3bd,3);sun.position.set(-90,145,65);sun.castShadow=true;sun.shadow.mapSize.set(1536,1536);sun.shadow.bias=-0.00018;sun.shadow.normalBias=0.025;sun.shadow.radius=3;Object.assign(sun.shadow.camera,{left:-180,right:180,top:180,bottom:-180,near:1,far:400});scene.add(sun);
+// Mobile GPUs can reset when the full island, high-resolution shadows and PBR maps load together.
+const mobileDevice=matchMedia('(pointer: coarse)').matches||innerWidth<760;
+const renderer=new THREE.WebGLRenderer({antialias:!mobileDevice,powerPreference:'low-power',alpha:false});
+renderer.setPixelRatio(Math.min(devicePixelRatio,mobileDevice?0.85:1.25));renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=!mobileDevice;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.16;document.querySelector('#world').appendChild(renderer.domElement);
+renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();showStartupError('Your phone reset the 3D graphics. Close other tabs and reload this page.');});
+renderer.domElement.addEventListener('webglcontextrestored',()=>location.reload());
+scene.add(new THREE.HemisphereLight(0xdaf0f1,0x536b46,2.15));const sun=new THREE.DirectionalLight(0xffe3bd,3);sun.position.set(-90,145,65);sun.castShadow=!mobileDevice;sun.shadow.mapSize.set(mobileDevice?512:1536,mobileDevice?512:1536);sun.shadow.bias=-0.00018;sun.shadow.normalBias=0.025;sun.shadow.radius=mobileDevice?1:3;Object.assign(sun.shadow.camera,{left:-180,right:180,top:180,bottom:-180,near:1,far:400});scene.add(sun);
 const M=(c,r=.88,m=0)=>new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:m});
 const m={grass:M('#638e52'),earth:M('#9a7958'),road:M('#343b3a'),concrete:M('#b7b5a6'),white:M('#e8e2d2'),plaster:M('#e6dcc6'),plaster2:M('#d7dfd0'),roof:M('#914b37'),roofDark:M('#693b31'),wood:M('#5a3828'),wood2:M('#8c5c3b'),glass:M('#78aeb0',.22,.16),brass:M('#b58b45',.35,.55),leaf:M('#356b43'),leaf2:M('#4f8750'),trunk:M('#684b32'),water:M('#3f9ea5',.2,.15),dark:M('#242b28'),red:M('#c64d3d'),asphalt:M('#444a46')};
 const world=new THREE.Group();scene.add(world);
@@ -25,7 +31,7 @@ function surfaceTexture(base,kind='noise'){
   if(kind==='plaster'){for(let i=0;i<90;i++){x.strokeStyle='rgba(80,65,48,.08)';x.beginPath();const px=rnd()*512,py=rnd()*512;x.moveTo(px,py);x.lineTo(px+5+rnd()*28,py+rnd()*3);x.stroke()}}
   if(kind==='grass'){for(let i=0;i<1400;i++){x.strokeStyle=rnd()>.5?'rgba(35,75,28,.16)':'rgba(220,225,145,.13)';x.beginPath();const px=rnd()*512,py=rnd()*512;x.moveTo(px,py);x.lineTo(px+(rnd()-.5)*4,py-2-rnd()*8);x.stroke()}}
  }
- const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());return t
+ const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=Math.min(mobileDevice?2:8,renderer.capabilities.getMaxAnisotropy());return t
 }
 m.grass.map=surfaceTexture('#638e52','grass');m.grass.color.set('#d5e0ce');m.grass.map.repeat.set(7,7);
 m.earth.map=surfaceTexture('#9a7958','stone');m.earth.map.repeat.set(4,4);
@@ -34,7 +40,7 @@ m.asphalt.map=surfaceTexture('#444a46','stone');m.asphalt.map.repeat.set(5,2);
 m.plaster.map=surfaceTexture('#e6dcc6','plaster');m.plaster.map.repeat.set(1.5,1.5);
 m.roof.map=surfaceTexture('#914b37','tiles');m.roof.map.repeat.set(1,1);
 m.water.map=surfaceTexture('#3f9ea5','noise');m.water.map.repeat.set(3,3);
-m.grass.bumpMap=m.grass.map;m.grass.bumpScale=.11;m.earth.bumpMap=m.earth.map;m.earth.bumpScale=.09;m.roof.bumpMap=m.roof.map;m.roof.bumpScale=.12;m.road.bumpMap=m.road.map;m.road.bumpScale=.055;m.plaster.bumpMap=m.plaster.map;m.plaster.bumpScale=.035;
+if(!mobileDevice){m.grass.bumpMap=m.grass.map;m.grass.bumpScale=.11;m.earth.bumpMap=m.earth.map;m.earth.bumpScale=.09;m.roof.bumpMap=m.roof.map;m.roof.bumpScale=.12;m.road.bumpMap=m.road.map;m.road.bumpScale=.055;m.plaster.bumpMap=m.plaster.map;m.plaster.bumpScale=.035;}
 for(const material of [m.grass,m.earth,m.road,m.asphalt,m.plaster,m.roof,m.water])material.needsUpdate=true;
 
 function box(p,x,y,z,w,h,d,ma,cast=true){const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),ma);o.position.set(x,y,z);o.castShadow=cast;o.receiveShadow=true;p.add(o);return o}
@@ -492,4 +498,4 @@ function refreshCharacterChoice(){const role=document.querySelector('#playerRole
 document.querySelector('#playerRole')?.addEventListener('change',refreshCharacterChoice);
 document.querySelector('#playerGender')?.addEventListener('change',refreshCharacterChoice);
 document.querySelector('#startGame')?.addEventListener('click',()=>{const nickname=(document.querySelector('#playerNickname')?.value||'').trim()||'Traveller';const role=document.querySelector('#playerRole')?.value||'Explorer';const gender=document.querySelector('#playerGender')?.value||'Male';const start=roleStarts[role]||roleStarts.Explorer;buildAvatar(role,gender);player.position.set(start.x,0,start.z);player.visible=true;facing=Math.PI;camera.position.set(start.x,5.2,start.z+10);yaw=0;pitch=.16;document.querySelector('#characterSetup')?.classList.remove('show');toastWorld(nickname+' · '+role+' · '+start.area);if(role==='Driver')toastWorld('Driver shift starts at Muthanga Bus Stand');});
-addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.25))});
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,mobileDevice?0.85:1.25))});
