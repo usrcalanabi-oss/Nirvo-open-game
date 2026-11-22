@@ -375,6 +375,7 @@ function buildAvatar(role='Explorer',gender='Male'){
  part(avatarParts,new THREE.CylinderGeometry(.32,.32,.075,16),accentMat,0,1.08,0,1,1,.78);
  for(const side of [-1,1])part(avatarParts,new THREE.TorusGeometry(.105,.018,6,12),accentMat,side*.145,.92,0);
  avatarParts.userData.limbs=limbs;
+ avatarParts.userData.walkPhase=0;
 }
 buildAvatar();
 player.position.set(0,0,24);
@@ -401,9 +402,30 @@ let facing=Math.PI;
 function animate(){
  requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05);
  if(driving){updateBus(dt);desired.set(driveBus.position.x+Math.sin(busYaw)*15,7.2+pitch*8,driveBus.position.z+Math.cos(busYaw)*15);camera.position.lerp(desired,1-Math.exp(3.2*dt));target.set(driveBus.position.x,2.1,driveBus.position.z);camera.lookAt(target)}
- else if(insideBuilding){desired.set(1000+Math.sin(yaw)*10,4.2+pitch*7,4+Math.cos(yaw)*10);camera.position.lerp(desired,1-Math.exp(5.5*dt));target.set(1000,1.4,0);camera.lookAt(target);}
+ else if(insideBuilding){
+  const forward=(keys.w||keys.arrowup?1:0)-(keys.s||keys.arrowdown?1:0),side=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0);
+  moveDir.set(-Math.sin(yaw)*forward+Math.cos(yaw)*side,0,-Math.cos(yaw)*forward-Math.sin(yaw)*side);
+  if(moveDir.lengthSq()>1)moveDir.normalize();
+  const roomSpeed=keys.shift?6.2:3.8,roomVelocity=moveDir.multiplyScalar(roomSpeed);
+  velocity.lerp(roomVelocity,1-Math.exp(((forward||side)?12:15)*dt));
+  player.position.addScaledVector(velocity,dt);
+  player.position.x=THREE.MathUtils.clamp(player.position.x,991.7,1008.3);
+  player.position.z=THREE.MathUtils.clamp(player.position.z,-7.2,7.4);
+  player.position.y=0;
+  if(velocity.lengthSq()>.04){const wanted=Math.atan2(-velocity.x,-velocity.z);let diff=((wanted-facing+Math.PI*3)%(Math.PI*2))-Math.PI;facing+=diff*(1-Math.exp(14*dt));player.rotation.y=facing}
+  desired.set(player.position.x+Math.sin(yaw)*8,3.7+pitch*6,player.position.z+Math.cos(yaw)*8);
+  camera.position.lerp(desired,1-Math.exp(6*dt));target.set(player.position.x,1.35,player.position.z);camera.lookAt(target);
+ }
  else if(sitting){velocity.multiplyScalar(Math.exp(-12*dt));player.position.y=0;desired.set(player.position.x+Math.sin(yaw)*8,3.3+pitch*5,player.position.z+Math.cos(yaw)*8);camera.position.lerp(desired,1-Math.exp(5.5*dt));target.set(player.position.x,1,player.position.z);camera.lookAt(target)}
  else if(!insideBuilding&&!sitting){let forward=(keys.w||keys.arrowup?1:0)-(keys.s||keys.arrowdown?1:0),side=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0);moveDir.set(-Math.sin(yaw)*forward+Math.cos(yaw)*side,0,-Math.cos(yaw)*forward-Math.sin(yaw)*side);if(moveDir.lengthSq()>1)moveDir.normalize();const desiredVelocity=moveDir.multiplyScalar(keys.shift?10.5:5.8);velocity.lerp(desiredVelocity,1-Math.exp(((forward||side)?10:13)*dt));player.position.addScaledVector(velocity,dt);player.position.x=THREE.MathUtils.clamp(player.position.x,-205,205);player.position.z=THREE.MathUtils.clamp(player.position.z,-205,205);if(velocity.lengthSq()>.06){const wanted=Math.atan2(-velocity.x,-velocity.z);let diff=((wanted-facing+Math.PI*3)%(Math.PI*2))-Math.PI;facing+=diff*(1-Math.exp(14*dt));player.rotation.y=facing}desired.set(player.position.x+Math.sin(yaw)*10,4.1+pitch*7,player.position.z+Math.cos(yaw)*10);camera.position.lerp(desired,1-Math.exp(5.5*dt));target.set(player.position.x,1.35,player.position.z);camera.lookAt(target);busEnter.style.display=player.position.distanceTo(driveBus.position)<12?'block':'none'}
+ const gaitSpeed=THREE.MathUtils.clamp(velocity.length()/7,0,1);
+ avatarParts.userData.walkPhase=(avatarParts.userData.walkPhase||0)+dt*(5+gaitSpeed*10);
+ const phase=avatarParts.userData.walkPhase,limbs=avatarParts.userData.limbs||[],swing=Math.sin(phase)*.62*gaitSpeed;
+ if(limbs.length>=4){
+  limbs[0].rotation.x=swing;limbs[2].rotation.x=-swing;
+  limbs[1].rotation.x=-swing*.72;limbs[3].rotation.x=swing*.72;
+ }
+ avatarParts.position.y=gaitSpeed>.05?Math.abs(Math.sin(phase*2))*.045*gaitSpeed:THREE.MathUtils.damp(avatarParts.position.y,0,12,dt);
  renderer.render(scene,camera);
 }
 animate();
