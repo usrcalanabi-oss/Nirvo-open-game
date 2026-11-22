@@ -5,10 +5,11 @@ let startupFailed=false;
 function showStartupError(message){startupFailed=true;const panel=document.querySelector('#loading');if(!panel)return;panel.classList.remove('hide');panel.innerHTML='<div class="loading-mark">N</div><strong>3D WORLD COULD NOT START</strong><span id="startupErrorText"></span>';const line=panel.querySelector('#startupErrorText');if(line)line.textContent=String(message||'Unknown startup error').slice(0,180)}
 addEventListener('error',event=>showStartupError(event.message||'JavaScript error'));
 addEventListener('unhandledrejection',event=>showStartupError(event.reason?.message||event.reason||'Module loading error'));
-const scene=new THREE.Scene();scene.background=new THREE.Color('#a8c6c3');scene.fog=new THREE.FogExp2('#a8c6c3',.0027);
+const scene=new THREE.Scene();scene.background=new THREE.Color('#9bbfc0');scene.fog=new THREE.FogExp2('#9bbfc0',.0019);
+const sky=new THREE.Mesh(new THREE.SphereGeometry(850,40,24),new THREE.ShaderMaterial({side:THREE.BackSide,depthWrite:false,toneMapped:false,vertexShader:`varying vec3 vDirection;void main(){vec4 wp=modelMatrix*vec4(position,1.0);vDirection=normalize(wp.xyz-cameraPosition);gl_Position=projectionMatrix*viewMatrix*wp;}`,fragmentShader:`varying vec3 vDirection;void main(){float h=max(normalize(vDirection).y,0.0);vec3 horizon=vec3(0.77,0.84,0.82);vec3 zenith=vec3(0.20,0.43,0.64);vec3 col=mix(horizon,zenith,pow(h,0.62));float glow=pow(max(dot(normalize(vDirection),normalize(vec3(-0.45,0.55,0.7))),0.0),20.0);col+=vec3(0.24,0.19,0.11)*glow;gl_FragColor=vec4(col,1.0);}`}));sky.renderOrder=-10;scene.add(sky);
 const camera=new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.1,900);camera.position.set(0,7,10);
 const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,1.25));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.16;document.querySelector('#world').appendChild(renderer.domElement);
-scene.add(new THREE.HemisphereLight(0xdaf0f1,0x536b46,2.15));const sun=new THREE.DirectionalLight(0xffe3bd,3);sun.position.set(-90,145,65);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);Object.assign(sun.shadow.camera,{left:-180,right:180,top:180,bottom:-180,near:1,far:400});scene.add(sun);
+scene.add(new THREE.HemisphereLight(0xdaf0f1,0x536b46,2.15));const sun=new THREE.DirectionalLight(0xffe3bd,3);sun.position.set(-90,145,65);sun.castShadow=true;sun.shadow.mapSize.set(1536,1536);sun.shadow.bias=-0.00018;sun.shadow.normalBias=0.025;sun.shadow.radius=3;Object.assign(sun.shadow.camera,{left:-180,right:180,top:180,bottom:-180,near:1,far:400});scene.add(sun);
 const M=(c,r=.88,m=0)=>new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:m});
 const m={grass:M('#638e52'),earth:M('#9a7958'),road:M('#343b3a'),concrete:M('#b7b5a6'),white:M('#e8e2d2'),plaster:M('#e6dcc6'),plaster2:M('#d7dfd0'),roof:M('#914b37'),roofDark:M('#693b31'),wood:M('#5a3828'),wood2:M('#8c5c3b'),glass:M('#78aeb0',.22,.16),brass:M('#b58b45',.35,.55),leaf:M('#356b43'),leaf2:M('#4f8750'),trunk:M('#684b32'),water:M('#3f9ea5',.2,.15),dark:M('#242b28'),red:M('#c64d3d'),asphalt:M('#444a46')};
 const world=new THREE.Group();scene.add(world);
@@ -33,6 +34,7 @@ m.asphalt.map=surfaceTexture('#444a46','stone');m.asphalt.map.repeat.set(5,2);
 m.plaster.map=surfaceTexture('#e6dcc6','plaster');m.plaster.map.repeat.set(1.5,1.5);
 m.roof.map=surfaceTexture('#914b37','tiles');m.roof.map.repeat.set(1,1);
 m.water.map=surfaceTexture('#3f9ea5','noise');m.water.map.repeat.set(3,3);
+m.grass.bumpMap=m.grass.map;m.grass.bumpScale=.11;m.earth.bumpMap=m.earth.map;m.earth.bumpScale=.09;m.roof.bumpMap=m.roof.map;m.roof.bumpScale=.12;m.road.bumpMap=m.road.map;m.road.bumpScale=.055;m.plaster.bumpMap=m.plaster.map;m.plaster.bumpScale=.035;
 for(const material of [m.grass,m.earth,m.road,m.asphalt,m.plaster,m.roof,m.water])material.needsUpdate=true;
 
 function box(p,x,y,z,w,h,d,ma,cast=true){const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),ma);o.position.set(x,y,z);o.castShadow=cast;o.receiveShadow=true;p.add(o);return o}
@@ -58,12 +60,20 @@ function terrain(){
  const ground=new THREE.Mesh(geo,m.grass);ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;ground.castShadow=false;world.add(ground);
  for(let r=0;r<2;r++)for(let i=0;i<18;i++){
   const a=i*Math.PI*2/18,rad=r?178:205,h=30+(i%5)*9+r*8;
-  const hill=new THREE.Mesh(new THREE.ConeGeometry(24+r*7,h,7),M(r?'#52795a':'#64876a'));
-  hill.position.set(Math.cos(a)*rad,h*.35-1,Math.sin(a)*rad);hill.scale.z=1.35;world.add(hill)
+  const hill=new THREE.Mesh(new THREE.SphereGeometry(1,28,18),M(r?'#52795a':'#64876a'));
+  hill.position.set(Math.cos(a)*rad,h*.16-1,Math.sin(a)*rad);hill.scale.set(27+r*8,h*.58,35+r*9);world.add(hill)
  }
 }
 terrain();
-function road(pts,width,ma=m.road){const curve=new THREE.CatmullRomCurve3(pts.map(p=>new THREE.Vector3(p[0],.15,p[1]))),v=[],ix=[],steps=150;for(let i=0;i<=steps;i++){const t=i/steps,p=curve.getPoint(t),d=curve.getTangent(t),nx=-d.z,nz=d.x;v.push(p.x+nx*width/2,p.y,p.z+nz*width/2,p.x-nx*width/2,p.y,p.z-nz*width/2);if(i<steps){const a=i*2;ix.push(a,a+1,a+2,a+1,a+3,a+2)}}const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(v,3));g.setIndex(ix);g.computeVertexNormals();const mesh=new THREE.Mesh(g,ma);mesh.receiveShadow=true;world.add(mesh);return curve}
+function road(pts,width,ma=m.road){
+ const curve=new THREE.CatmullRomCurve3(pts.map(p=>new THREE.Vector3(p[0],.15,p[1]))),v=[],ix=[],steps=220;
+ for(let i=0;i<=steps;i++){const t=i/steps,p=curve.getPoint(t),d=curve.getTangent(t),nx=-d.z,nz=d.x;v.push(p.x+nx*width/2,p.y,p.z+nz*width/2,p.x-nx*width/2,p.y,p.z-nz*width/2);if(i<steps){const a=i*2;ix.push(a,a+1,a+2,a+1,a+3,a+2)}}
+ const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(v,3));g.setIndex(ix);g.computeVertexNormals();const mesh=new THREE.Mesh(g,ma);mesh.receiveShadow=true;world.add(mesh);
+ const edgeMat=new THREE.MeshStandardMaterial({color:'#d8d0b5',roughness:.8});
+ for(const side of [-1,1]){const pts=[];for(let i=0;i<=100;i++){const p=curve.getPointAt(i/100),d=curve.getTangentAt(i/100);pts.push(new THREE.Vector3(p.x-d.z*width*.46,.19,p.z+d.x*width*.46))}world.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),180,.055,5,false),edgeMat))}
+ if(width>=7){const dashMat=new THREE.MeshStandardMaterial({color:'#e6d7a6',roughness:.8}),length=curve.getLength();for(let t=5;t<length;t+=13){const p=curve.getPointAt(t/length),d=curve.getTangentAt(t/length),dash=new THREE.Mesh(new THREE.BoxGeometry(.13,.035,4.2),dashMat);dash.position.set(p.x,.205,p.z);dash.rotation.y=Math.atan2(d.x,d.z);world.add(dash)}}
+ return curve
+}
 const mainRoad=road([[-175,18],[-125,13],[-90,0],[-55,-2],[-20,0],[15,2],[48,5],[83,12],[118,23],[160,35]],10);
 road([[-55,-2],[-65,-28],[-72,-57],[-82,-95],[-110,-135]],7);road([[48,5],[62,-25],[82,-48],[112,-72],[150,-98]],7);road([[-20,0],[-12,27],[-8,58],[-18,92],[-38,125]],7);road([[83,12],[100,0],[124,-8],[150,-12]],6,m.asphalt);
 for(let x=-120;x<130;x+=24){box(world,x,.12,-7.2,8,.08,.55,m.concrete,false);box(world,x,.12,7.2,8,.08,.55,m.concrete,false)}
@@ -81,7 +91,7 @@ function house(x,z,i){const g=new THREE.Group();g.position.set(x,0,z);world.add(
 [[-37,-27],[-55,-27],[-73,-27],[-91,-27],[-37,-48],[-55,-48],[-73,-48],[-91,-48],[25,-28],[43,-28],[61,-28],[79,-28],[25,-49],[43,-49],[61,-49],[79,-49],[-35,34],[-54,34],[24,34],[43,34]].forEach((p,i)=>house(...p,i));
 function palm(x,z,s=1){
  const g=new THREE.Group();g.position.set(x,0,z);g.scale.setScalar(s);world.add(g);
- const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.17,.34,7.6,14,5),m.trunk);trunk.position.y=3.8;trunk.rotation.z=.045;trunk.castShadow=true;g.add(trunk);
+ const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.17,.34,7.6,20,6),m.trunk);trunk.position.y=3.8;trunk.rotation.z=.045;trunk.castShadow=true;g.add(trunk);
  for(let i=0;i<11;i++){const a=i*Math.PI*2/11,dir=new THREE.Vector3(Math.cos(a),.2,Math.sin(a));
   const curve=new THREE.QuadraticBezierCurve3(new THREE.Vector3(0,7.05,0),new THREE.Vector3(dir.x*2.4,8.2,dir.z*2.4),new THREE.Vector3(dir.x*4.4,5.5,dir.z*4.4));
   const stem=new THREE.Mesh(new THREE.TubeGeometry(curve,14,.045,5,false),m.wood2);g.add(stem);
@@ -91,9 +101,9 @@ function palm(x,z,s=1){
 }
 function tree(x,z,s=1){
  const g=new THREE.Group();g.position.set(x,0,z);world.add(g);
- const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.18,.42,5.2,12,3),m.trunk);trunk.position.y=2.6;trunk.castShadow=true;g.add(trunk);
+ const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.18,.42,5.2,18,4),m.trunk);trunk.position.y=2.6;trunk.castShadow=true;g.add(trunk);
  for(let i=0;i<7;i++){const a=i*Math.PI*2/7,branch=new THREE.Mesh(new THREE.CylinderGeometry(.045,.14,2.4,7),m.trunk);branch.position.set(Math.cos(a)*.75,4.25,Math.sin(a)*.75);branch.rotation.z=Math.cos(a)*-.38;branch.rotation.x=Math.sin(a)*.38;g.add(branch)}
- for(let i=0;i<8;i++){const crown=new THREE.Mesh(new THREE.SphereGeometry(1.8*s,14,11),i%2?m.leaf:m.leaf2);const a=i*Math.PI*2/8;crown.position.set(Math.cos(a)*1.35,5.15+(i%3)*.45,Math.sin(a)*1.35);crown.scale.set(1.15,.86,1.05);crown.castShadow=true;g.add(crown)}
+ for(let i=0;i<8;i++){const crown=new THREE.Mesh(new THREE.SphereGeometry(1.8*s,24,18),i%2?m.leaf:m.leaf2);const a=i*Math.PI*2/8;crown.position.set(Math.cos(a)*1.35,5.15+(i%3)*.45,Math.sin(a)*1.35);crown.scale.set(1.15,.86,1.05);crown.castShadow=true;g.add(crown)}
 }
 for(let i=0;i<70;i++){const x=(i*47)%340-170,z=(i*73)%340-170;if(Math.abs(x)<105&&Math.abs(z)<100)continue;i%3===0?palm(x,z,.8+i%4*.12):tree(x,z,.8+i%3*.15)}
 for(let x=-110;x<120;x+=17){palm(x,-13,.68);palm(x,13,.68)}for(let z=-95;z<100;z+=20){tree(-15,z,.7);tree(15,z,.7)}
